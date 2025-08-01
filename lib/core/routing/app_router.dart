@@ -7,6 +7,7 @@ import '../../presentation/screens/workflow_screen.dart';
 import '../../presentation/screens/team_screen.dart';
 import '../../presentation/screens/security_screen.dart';
 import '../../presentation/screens/deployments_screen.dart';
+import '../../presentation/screens/audit_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 
 class AppRouter {
@@ -42,6 +43,11 @@ class AppRouter {
             path: '/deployments',
             name: 'deployments',
             builder: (context, state) => const DeploymentsScreen(),
+          ),
+          GoRoute(
+            path: '/audit',
+            name: 'audit',
+            builder: (context, state) => const AuditScreen(),
           ),
           GoRoute(
             path: '/settings',

@@ -6,6 +6,7 @@ enum AppSection {
   team,
   security,
   deployments,
+  audit,
   settings,
 }
 
