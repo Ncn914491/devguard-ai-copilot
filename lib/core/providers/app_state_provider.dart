@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 enum AppSection {
   home,
   workflow,
+  team,
   security,
   deployments,
   settings,

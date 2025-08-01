@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../presentation/screens/main_screen.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/workflow_screen.dart';
+import '../../presentation/screens/team_screen.dart';
 import '../../presentation/screens/security_screen.dart';
 import '../../presentation/screens/deployments_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
@@ -26,6 +27,11 @@ class AppRouter {
             path: '/workflow',
             name: 'workflow',
             builder: (context, state) => const WorkflowScreen(),
+          ),
+          GoRoute(
+            path: '/team',
+            name: 'team',
+            builder: (context, state) => const TeamScreen(),
           ),
           GoRoute(
             path: '/security',
