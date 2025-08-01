@@ -271,10 +271,12 @@ class SecurityMonitor {
     return SecurityStatus(
       isMonitoring: _monitoringTimer?.isActive ?? false,
       honeytokensDeployed: _honeytokens.length,
+      honeytokensActive: _honeytokens.length, // All deployed tokens are active
       configFilesMonitored: _configHashes.length,
       activeAlerts: activeAlerts.length,
       criticalAlerts: criticalAlerts.length,
       lastCheck: DateTime.now(),
+      lastScanTime: DateTime.now(),
     );
   }
 
@@ -282,6 +284,12 @@ class SecurityMonitor {
   void stop() {
     _monitoringTimer?.cancel();
     _monitoringTimer = null;
+  }
+
+  /// Get recent security alerts
+  /// Satisfies Requirements: 3.1 (Security alert retrieval)
+  Future<List<SecurityAlert>> getRecentAlerts({int limit = 10}) async {
+    return await _securityAlertService.getRecentAlerts(limit: limit);
   }
 
   /// Dispose resources
@@ -294,17 +302,21 @@ class SecurityMonitor {
 class SecurityStatus {
   final bool isMonitoring;
   final int honeytokensDeployed;
+  final int honeytokensActive;
   final int configFilesMonitored;
   final int activeAlerts;
   final int criticalAlerts;
   final DateTime lastCheck;
+  final DateTime lastScanTime;
 
   SecurityStatus({
     required this.isMonitoring,
     required this.honeytokensDeployed,
+    required this.honeytokensActive,
     required this.configFilesMonitored,
     required this.activeAlerts,
     required this.criticalAlerts,
     required this.lastCheck,
+    required this.lastScanTime,
   });
 }

@@ -249,4 +249,16 @@ class SecurityAlertService {
 
     return await createSecurityAlert(alert);
   }
+
+  /// Get recent security alerts
+  /// Satisfies Requirements: 3.1 (Security alert retrieval)
+  Future<List<SecurityAlert>> getRecentAlerts({int limit = 10}) async {
+    final db = await _db;
+    final maps = await db.query(
+      'security_alerts',
+      orderBy: 'detected_at DESC',
+      limit: limit,
+    );
+    return maps.map((map) => SecurityAlert.fromMap(map)).toList();
+  }
 }

@@ -47,6 +47,7 @@ class RollbackController {
         createdAt: snapshot.createdAt,
         verified: snapshot.verified,
         description: _generateRollbackDescription(snapshot, deployment),
+        aiReasoning: await _generateRollbackReasoning(snapshot, 'Rollback option for ${deployment.version}'),
       ));
     }
 
@@ -290,6 +291,7 @@ class RollbackOption {
   final DateTime createdAt;
   final bool verified;
   final String description;
+  final String aiReasoning;
 
   RollbackOption({
     required this.id,
@@ -301,6 +303,7 @@ class RollbackOption {
     required this.createdAt,
     required this.verified,
     required this.description,
+    required this.aiReasoning,
   });
 }
 

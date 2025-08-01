@@ -230,10 +230,18 @@ class _DeploymentsScreenState extends State<DeploymentsScreen> {
         options: options,
         onConfirm: (option) async {
           try {
+            // First initiate rollback request
+            final request = await _rollbackController.initiateRollback(
+              environment: environment,
+              snapshotId: option.snapshotId,
+              reason: 'User-initiated rollback via UI',
+              requestedBy: 'current_user',
+            );
+            
+            // Then execute it (simulating approval)
             final result = await _rollbackController.executeRollback(
-              environment,
-              option.snapshotId,
-              'User-initiated rollback via UI',
+              request.id,
+              'current_user',
             );
             
             if (mounted) {
