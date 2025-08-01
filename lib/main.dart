@@ -8,6 +8,7 @@ import 'core/providers/app_state_provider.dart';
 import 'core/routing/app_router.dart';
 import 'core/database/database_service.dart';
 import 'core/ai/gemini_service.dart';
+import 'core/security/security_monitor.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,9 @@ void main() async {
   // Initialize AI service with API key from environment
   const apiKey = String.fromEnvironment('GEMINI_API_KEY');
   await GeminiService.instance.initialize(apiKey: apiKey.isNotEmpty ? apiKey : null);
+  
+  // Initialize security monitoring
+  await SecurityMonitor.instance.initialize();
   
   runApp(const DevGuardApp());
 }
