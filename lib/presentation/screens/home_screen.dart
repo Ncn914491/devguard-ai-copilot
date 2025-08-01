@@ -242,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.rocket_launch,
                           title: 'Deployment: ${deployment.environment}',
                           subtitle: 'Status: ${deployment.status}',
-                          time: _formatTime(deployment.createdAt),
+                          time: _formatTime(deployment.deployedAt),
                           color: deployment.status == 'success' ? Colors.green : Colors.blue,
                         )),
                       ],

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/security/security_monitor.dart';
-import '../../core/database/services/services.dart';
 import '../../core/database/models/models.dart';
 
 class SecurityScreen extends StatefulWidget {
@@ -12,7 +11,6 @@ class SecurityScreen extends StatefulWidget {
 
 class _SecurityScreenState extends State<SecurityScreen> {
   final _securityMonitor = SecurityMonitor.instance;
-  final _securityAlertService = SecurityAlertService.instance;
   
   SecurityStatus? _securityStatus;
   List<SecurityAlert> _alerts = [];
@@ -28,12 +26,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final status = await _securityMonitor.getSecurityStatus();
-      final alerts = await _securityAlertService.getAllSecurityAlerts();
+      final results = await Future.wait([
+        _securityMonitor.getSecurityStatus(),
+        _securityMonitor.getRecentAlerts(),
+      ]);
       
       setState(() {
-        _securityStatus = status;
-        _alerts = alerts.take(10).toList(); // Show latest 10 alerts
+        _securityStatus = results[0] as SecurityStatus;
+        _alerts = results[1] as List<SecurityAlert>;
         _isLoading = false;
       });
     } catch (e) {
@@ -54,161 +54,173 @@ class _SecurityScreenState extends State<SecurityScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Security Monitor',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Real-time security monitoring and threat detection',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: _loadSecurityData,
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh Security Status',
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Security Status Cards
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else
+            _buildSecurityStatusCards(),
+          
+          const SizedBox(height: 32),
+          
+          // Recent Alerts
           Text(
-            'Security Monitoring',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            'Recent Security Alerts',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Monitor database access, configuration changes, and security alerts',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
-          ),
+          const SizedBox(height: 16),
           
-          const SizedBox(height: 32),
-          
-          // Security Status
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_securityStatus != null) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _SecurityStatusCard(
-                    title: 'Database Security',
-                    status: _securityStatus!.honeytokensDeployed > 0 ? 'Protected' : 'Vulnerable',
-                    description: '${_securityStatus!.honeytokensDeployed} honeytokens deployed and monitoring active',
-                    color: _securityStatus!.honeytokensDeployed > 0 ? Colors.green : Colors.red,
-                    icon: Icons.storage_outlined,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _SecurityStatusCard(
-                    title: 'Configuration Monitoring',
-                    status: _securityStatus!.isMonitoring ? 'Active' : 'Inactive',
-                    description: 'Monitoring ${_securityStatus!.configFilesMonitored} configuration files',
-                    color: _securityStatus!.isMonitoring ? Colors.blue : Colors.orange,
-                    icon: Icons.settings_outlined,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _SecurityStatusCard(
-                    title: 'Active Alerts',
-                    status: '${_securityStatus!.activeAlerts}',
-                    description: '${_securityStatus!.criticalAlerts} critical alerts requiring attention',
-                    color: _securityStatus!.criticalAlerts > 0 ? Colors.red : Colors.green,
-                    icon: Icons.warning_outlined,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _SecurityStatusCard(
-                    title: 'System Status',
-                    status: _securityStatus!.isMonitoring ? 'Monitoring' : 'Offline',
-                    description: 'Last check: ${_formatTime(_securityStatus!.lastCheck)}',
-                    color: _securityStatus!.isMonitoring ? Colors.blue : Colors.grey,
-                    icon: Icons.monitor_heart_outlined,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          
-          const SizedBox(height: 32),
-          
-          // Alerts Section
           Expanded(
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Security Alerts',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _loadSecurityData,
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text('Refresh'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: _alerts.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.shield_outlined,
-                                    size: 48,
-                                    color: Colors.green.withOpacity(0.7),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No security alerts',
-                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Your system is secure and all monitoring is active',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: _alerts.length,
-                              itemBuilder: (context, index) {
-                                return _SecurityAlertCard(alert: _alerts[index]);
-                              },
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _alerts.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.shield_outlined,
+                              size: 64,
+                              color: Colors.green.withValues(alpha: 0.6),
                             ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'All Clear!',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No security alerts detected',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _alerts.length,
+                        itemBuilder: (context, index) {
+                          final alert = _alerts[index];
+                          return _SecurityAlertCard(alert: alert);
+                        },
+                      ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildSecurityStatusCards() {
+    if (_securityStatus == null) return const SizedBox.shrink();
+    
+    return Row(
+      children: [
+        Expanded(
+          child: _SecurityStatusCard(
+            title: 'Active Alerts',
+            value: '${_securityStatus!.activeAlerts}',
+            subtitle: _securityStatus!.activeAlerts == 0 ? 'All systems secure' : 'Requires attention',
+            color: _securityStatus!.activeAlerts == 0 ? Colors.green : Colors.orange,
+            icon: Icons.warning_outlined,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _SecurityStatusCard(
+            title: 'Critical Alerts',
+            value: '${_securityStatus!.criticalAlerts}',
+            subtitle: _securityStatus!.criticalAlerts == 0 ? 'No critical issues' : 'Immediate action required',
+            color: _securityStatus!.criticalAlerts == 0 ? Colors.green : Colors.red,
+            icon: Icons.error_outline,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _SecurityStatusCard(
+            title: 'Honeytokens',
+            value: '${_securityStatus!.honeytokensActive}',
+            subtitle: 'Active monitoring traps',
+            color: Colors.blue,
+            icon: Icons.security_outlined,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _SecurityStatusCard(
+            title: 'Last Scan',
+            value: _formatTime(_securityStatus!.lastScanTime),
+            subtitle: 'System scan completed',
+            color: Colors.purple,
+            icon: Icons.scanner_outlined,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
+  }
 }
 
 class _SecurityStatusCard extends StatelessWidget {
   final String title;
-  final String status;
-  final String description;
+  final String value;
+  final String subtitle;
   final Color color;
   final IconData icon;
   
   const _SecurityStatusCard({
     required this.title,
-    required this.status,
-    required this.description,
+    required this.value,
+    required this.subtitle,
     required this.color,
     required this.icon,
   });
@@ -229,35 +241,29 @@ class _SecurityStatusCard extends StatelessWidget {
                   color: color,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color,
-                ),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
-              description,
+              subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -266,8 +272,8 @@ class _SecurityStatusCard extends StatelessWidget {
     );
   }
 }
-cl
-ass _SecurityAlertCard extends StatelessWidget {
+
+class _SecurityAlertCard extends StatelessWidget {
   final SecurityAlert alert;
   
   const _SecurityAlertCard({required this.alert});
@@ -303,40 +309,50 @@ ass _SecurityAlertCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'AI Analysis: ${alert.aiExplanation}',
+              'Detected: ${_formatTime(alert.detectedAt)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                fontStyle: FontStyle.italic,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  'Detected: ${_formatTime(alert.detectedAt)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  ),
+            if (alert.aiExplanation.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const Spacer(),
-                if (alert.rollbackSuggested)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.psychology_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'AI Analysis',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      'Rollback Suggested',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.orange.shade700,
+                    const SizedBox(height: 4),
+                    Text(
+                      alert.aiExplanation,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
-                  ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -344,46 +360,60 @@ ass _SecurityAlertCard extends StatelessWidget {
   }
 
   Widget _getSeverityIcon(String severity) {
-    switch (severity) {
+    IconData icon;
+    Color color;
+    
+    switch (severity.toLowerCase()) {
       case 'critical':
-        return const Icon(Icons.error, color: Colors.red, size: 20);
+        icon = Icons.error;
+        color = Colors.red;
+        break;
       case 'high':
-        return const Icon(Icons.warning, color: Colors.orange, size: 20);
+        icon = Icons.warning;
+        color = Colors.orange;
+        break;
       case 'medium':
-        return const Icon(Icons.info, color: Colors.blue, size: 20);
+        icon = Icons.info;
+        color = Colors.blue;
+        break;
       case 'low':
-        return const Icon(Icons.info_outline, color: Colors.grey, size: 20);
+        icon = Icons.info_outline;
+        color = Colors.green;
+        break;
       default:
-        return const Icon(Icons.help_outline, color: Colors.grey, size: 20);
+        icon = Icons.help;
+        color = Colors.grey;
     }
+    
+    return Icon(icon, color: color, size: 20);
   }
 
   Widget _getStatusChip(BuildContext context, String status) {
     Color backgroundColor;
     Color textColor;
-
-    switch (status) {
-      case 'new':
-        backgroundColor = Colors.red.withOpacity(0.2);
-        textColor = Colors.red.shade700;
+    
+    switch (status.toLowerCase()) {
+      case 'active':
+        backgroundColor = Colors.red.withValues(alpha: 0.1);
+        textColor = Colors.red;
         break;
       case 'investigating':
-        backgroundColor = Colors.orange.withOpacity(0.2);
-        textColor = Colors.orange.shade700;
+        backgroundColor = Colors.orange.withValues(alpha: 0.1);
+        textColor = Colors.orange;
         break;
       case 'resolved':
-        backgroundColor = Colors.green.withOpacity(0.2);
-        textColor = Colors.green.shade700;
+        backgroundColor = Colors.green.withValues(alpha: 0.1);
+        textColor = Colors.green;
         break;
-      case 'false_positive':
-        backgroundColor = Colors.grey.withOpacity(0.2);
-        textColor = Colors.grey.shade700;
+      case 'dismissed':
+        backgroundColor = Colors.grey.withValues(alpha: 0.1);
+        textColor = Colors.grey;
         break;
       default:
-        backgroundColor = Theme.of(context).colorScheme.surfaceVariant;
-        textColor = Theme.of(context).colorScheme.onSurfaceVariant;
+        backgroundColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+        textColor = Theme.of(context).colorScheme.onSurface;
     }
-
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -392,10 +422,9 @@ ass _SecurityAlertCard extends StatelessWidget {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: textColor,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

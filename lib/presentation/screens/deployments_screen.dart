@@ -50,23 +50,48 @@ class _DeploymentsScreenState extends State<DeploymentsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Text(
-            'Deployments',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Manage CI/CD pipelines, deployments, and rollback operations',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Deployments',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Monitor and manage your deployment pipeline',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _showRollbackDialog,
+                    icon: const Icon(Icons.undo),
+                    label: const Text('Rollback'),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _loadDeployments,
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Refresh',
+                  ),
+                ],
+              ),
+            ],
           ),
           
           const SizedBox(height: 32),
           
-          // Environment Status
+          // Environment Status Cards
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else
@@ -74,178 +99,59 @@ class _DeploymentsScreenState extends State<DeploymentsScreen> {
           
           const SizedBox(height: 32),
           
-          // Actions
-          Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Implement create pipeline
-                },
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Create Pipeline'),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: () {
-                  // TODO: Implement deploy
-                },
-                icon: const Icon(Icons.rocket_launch, size: 16),
-                label: const Text('Deploy'),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: _showRollbackDialog,
-                icon: const Icon(Icons.undo, size: 16),
-                label: const Text('Rollback'),
-              ),
-              const SizedBox(width: 12),
-              TextButton.icon(
-                onPressed: _loadDeployments,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Refresh'),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Deployment History
-          Expanded(
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Deployment History',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: _deployments.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.history_outlined,
-                                    size: 48,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No deployment history',
-                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Create your first pipeline to start deploying',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: _deployments.length,
-                              itemBuilder: (context, index) {
-                                return _DeploymentCard(deployment: _deployments[index]);
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
+          // Recent Deployments
+          Text(
+            'Recent Deployments',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
+          ),
+          const SizedBox(height: 16),
+          
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _deployments.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.rocket_launch_outlined,
+                              size: 64,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No deployments yet',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Deployments will appear here once you start deploying',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _deployments.length,
+                        itemBuilder: (context, index) {
+                          final deployment = _deployments[index];
+                          return _DeploymentCard(deployment: deployment);
+                        },
+                      ),
           ),
         ],
       ),
     );
   }
-}
 
-class _EnvironmentCard extends StatelessWidget {
-  final String environment;
-  final String status;
-  final String lastDeployment;
-  final Color color;
-  
-  const _EnvironmentCard({
-    required this.environment,
-    required this.status,
-    required this.lastDeployment,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  environment,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Last deployment:',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-            Text(
-              lastDeployment,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-} 
- Widget _buildEnvironmentCards() {
+  Widget _buildEnvironmentCards() {
     final environments = ['development', 'staging', 'production'];
     final colors = [Colors.blue, Colors.orange, Colors.green];
     
@@ -319,77 +225,42 @@ class _EnvironmentCard extends StatelessWidget {
   void _showRollbackOptionsDialog(String environment, List<RollbackOption> options) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Rollback Options for $environment'),
-        content: SizedBox(
-          width: 400,
-          height: 300,
-          child: ListView.builder(
-            itemCount: options.length,
-            itemBuilder: (context, index) {
-              final option = options[index];
-              return ListTile(
-                title: Text(option.version),
-                subtitle: Text(option.description),
-                trailing: option.verified 
-                    ? const Icon(Icons.verified, color: Colors.green, size: 16)
-                    : const Icon(Icons.warning, color: Colors.orange, size: 16),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _confirmRollback(option);
-                },
+      builder: (context) => _RollbackOptionsDialog(
+        environment: environment,
+        options: options,
+        onConfirm: (option) async {
+          try {
+            final result = await _rollbackController.executeRollback(
+              environment,
+              option.snapshotId,
+              'User-initiated rollback via UI',
+            );
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result.success 
+                      ? 'Rollback initiated successfully' 
+                      : 'Rollback failed: ${result.message}'),
+                  backgroundColor: result.success ? Colors.green : Colors.red,
+                ),
               );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmRollback(RollbackOption option) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Rollback'),
-        content: Text('Are you sure you want to rollback to ${option.version}?\n\n${option.description}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              try {
-                final request = await _rollbackController.initiateRollback(
-                  environment: option.environment,
-                  snapshotId: option.snapshotId,
-                  reason: 'Manual rollback requested by user',
-                  requestedBy: 'current_user',
-                );
-                
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Rollback request created: ${request.id}')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error creating rollback request: $e')),
-                  );
-                }
+              
+              if (result.success) {
+                _loadDeployments(); // Refresh the list
               }
-            },
-            child: const Text('Confirm Rollback'),
-          ),
-        ],
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error executing rollback: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }
@@ -448,27 +319,9 @@ class _DeploymentCard extends StatelessWidget {
             Text(
               'Deployed: ${_formatTime(deployment.deployedAt)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            if (deployment.rollbackAvailable) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Rollback Available',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.blue.shade700,
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -476,46 +329,60 @@ class _DeploymentCard extends StatelessWidget {
   }
 
   Widget _getStatusIcon(String status) {
+    IconData icon;
+    Color color;
+    
     switch (status) {
       case 'success':
-        return const Icon(Icons.check_circle, color: Colors.green, size: 20);
+        icon = Icons.check_circle;
+        color = Colors.green;
+        break;
       case 'failed':
-        return const Icon(Icons.error, color: Colors.red, size: 20);
+        icon = Icons.error;
+        color = Colors.red;
+        break;
       case 'in_progress':
-        return const Icon(Icons.hourglass_empty, color: Colors.blue, size: 20);
+        icon = Icons.hourglass_empty;
+        color = Colors.blue;
+        break;
       case 'rolled_back':
-        return const Icon(Icons.undo, color: Colors.orange, size: 20);
+        icon = Icons.undo;
+        color = Colors.orange;
+        break;
       default:
-        return const Icon(Icons.help_outline, color: Colors.grey, size: 20);
+        icon = Icons.help;
+        color = Colors.grey;
     }
+    
+    return Icon(icon, color: color, size: 20);
   }
 
   Widget _getStatusChip(BuildContext context, String status) {
     Color backgroundColor;
     Color textColor;
-
+    
     switch (status) {
       case 'success':
-        backgroundColor = Colors.green.withOpacity(0.2);
-        textColor = Colors.green.shade700;
+        backgroundColor = Colors.green.withValues(alpha: 0.1);
+        textColor = Colors.green;
         break;
       case 'failed':
-        backgroundColor = Colors.red.withOpacity(0.2);
-        textColor = Colors.red.shade700;
+        backgroundColor = Colors.red.withValues(alpha: 0.1);
+        textColor = Colors.red;
         break;
       case 'in_progress':
-        backgroundColor = Colors.blue.withOpacity(0.2);
-        textColor = Colors.blue.shade700;
+        backgroundColor = Colors.blue.withValues(alpha: 0.1);
+        textColor = Colors.blue;
         break;
       case 'rolled_back':
-        backgroundColor = Colors.orange.withOpacity(0.2);
-        textColor = Colors.orange.shade700;
+        backgroundColor = Colors.orange.withValues(alpha: 0.1);
+        textColor = Colors.orange;
         break;
       default:
-        backgroundColor = Theme.of(context).colorScheme.surfaceVariant;
-        textColor = Theme.of(context).colorScheme.onSurfaceVariant;
+        backgroundColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+        textColor = Theme.of(context).colorScheme.onSurface;
     }
-
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -524,10 +391,9 @@ class _DeploymentCard extends StatelessWidget {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: textColor,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -549,6 +415,68 @@ class _DeploymentCard extends StatelessWidget {
   }
 }
 
+class _EnvironmentCard extends StatelessWidget {
+  final String environment;
+  final String status;
+  final String lastDeployment;
+  final Color color;
+  
+  const _EnvironmentCard({
+    required this.environment,
+    required this.status,
+    required this.lastDeployment,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  environment,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              status,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              lastDeployment,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RollbackDialog extends StatefulWidget {
   final Function(String) onRollback;
   
@@ -560,21 +488,22 @@ class _RollbackDialog extends StatefulWidget {
 
 class _RollbackDialogState extends State<_RollbackDialog> {
   String _selectedEnvironment = 'production';
-
+  
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Initiate Rollback'),
+      title: const Text('Rollback Deployment'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Select environment for rollback:'),
+          const Text('Select the environment to rollback:'),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             value: _selectedEnvironment,
             decoration: const InputDecoration(
-              border: OutlineInputBorder(),
               labelText: 'Environment',
+              border: OutlineInputBorder(),
             ),
             items: ['development', 'staging', 'production']
                 .map((env) => DropdownMenuItem(
@@ -600,9 +529,84 @@ class _RollbackDialogState extends State<_RollbackDialog> {
             Navigator.of(context).pop();
             widget.onRollback(_selectedEnvironment);
           },
-          child: const Text('Show Options'),
+          child: const Text('Continue'),
         ),
       ],
     );
+  }
+}
+
+class _RollbackOptionsDialog extends StatelessWidget {
+  final String environment;
+  final List<RollbackOption> options;
+  final Function(RollbackOption) onConfirm;
+  
+  const _RollbackOptionsDialog({
+    required this.environment,
+    required this.options,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Rollback Options - ${environment.toUpperCase()}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Select a snapshot to rollback to:'),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text('Version ${option.version}'),
+                      subtitle: Text(
+                        'Created: ${_formatTime(option.createdAt)}\n'
+                        'Reason: ${option.aiReasoning}',
+                      ),
+                      trailing: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          onConfirm(option);
+                        },
+                        child: const Text('Rollback'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
   }
 }

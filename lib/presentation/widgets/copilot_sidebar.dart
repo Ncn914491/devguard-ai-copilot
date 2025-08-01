@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/ai/copilot_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/providers/app_state_provider.dart';
@@ -12,7 +13,7 @@ class CopilotSidebar extends StatefulWidget {
 }
 
 class _CopilotSidebarState extends State<CopilotSidebar> {
-  final _copilotService = CopilotService.instance;
+  final _copilotService = CopilotService();
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
