@@ -2,148 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/providers/app_state_provider.dart';
+import '../../core/ai/copilot_service.dart';
 
-class CopilotSidebar extends StatelessWidget {
+class CopilotSidebar extends StatefulWidget {
   const CopilotSidebar({super.key});
+
+  @override
+  State<CopilotSidebar> createState() => _CopilotSidebarState();
+}
+
+class _CopilotSidebarState extends State<CopilotSidebar> {
+  final _copilotService = CopilotService.instance;
+  final _messageController = TextEditingController();
+  final _scrollController = ScrollController();
+  final List<ChatMessage> _messages = [];
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Add welcome message
+    _messages.add(ChatMessage(
+      content: 'Hello! I\'m your DevGuard AI Copilot. I can help you with security alerts, deployment summaries, and quick commands like /rollback and /summarize.',
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppStateProvider>(
       builder: (context, appState, _) {
         if (appState.isCopilotExpanded) {
-          return _ExpandedCopilot();
+          return _buildExpandedCopilot(appState);
         } else {
-          return _CollapsedCopilot();
+          return _buildCollapsedCopilot(appState);
         }
       },
     );
   }
-}
 
-class _CollapsedCopilot extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 320,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          left: BorderSide(
-            color: Theme.of(context).dividerColor.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).dividerColor.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.smart_toy_outlined,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'AI Copilot',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.fullscreen),
-                  iconSize: 18,
-                  onPressed: () {
-                    context.read<AppStateProvider>().toggleCopilot();
-                  },
-                  tooltip: 'Expand copilot',
-                ),
-              ],
-            ),
-          ),
-          
-          // Chat Area
-          Expanded(
-            child: Column(
-              children: [
-                // Messages
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _ChatMessage(
-                        isUser: false,
-                        message: 'Hello! I\'m your DevGuard AI Copilot. I can help you with security alerts, deployment summaries, and quick commands like /rollback and /summarize.',
-                        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Input Area
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: Theme.of(context).dividerColor.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Ask me anything or use /commands...',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                          ),
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: () {
-                          // TODO: Implement send message
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ExpandedCopilot extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildExpandedCopilot(AppStateProvider appState) {
     return Container(
       width: MediaQuery.of(context).size.width * 0.6,
       decoration: BoxDecoration(
@@ -172,7 +78,7 @@ class _ExpandedCopilot extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.smart_toy_outlined,
+                  Icons.smart_toy,
                   size: 20,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -189,68 +95,70 @@ class _ExpandedCopilot extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.fullscreen_exit),
                   iconSize: 18,
-                  onPressed: () {
-                    context.read<AppStateProvider>().toggleCopilot();
-                  },
+                  onPressed: () => appState.toggleCopilot(),
                   tooltip: 'Collapse copilot',
                 ),
               ],
             ),
           ),
-          
-          // Expanded Chat Area
+
+          // Chat Messages
           Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(24),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                return _buildMessageBubble(_messages[index]);
+              },
+            ),
+          ),
+
+          // Input Area
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+            ),
             child: Column(
               children: [
-                // Messages
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      _ChatMessage(
-                        isUser: false,
-                        message: 'Welcome to the expanded copilot view! Here you have more space for detailed conversations and explanations.',
-                        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Input Area
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: Theme.of(context).dividerColor.withOpacity(0.1),
-                        width: 1,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration(
+                          hintText: 'Ask me anything or use /help for commands...',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        maxLines: null,
+                        onSubmitted: _isProcessing ? null : _sendMessage,
                       ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Ask me anything or use /commands...',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                          ),
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: () {
-                          // TODO: Implement send message
-                        },
-                      ),
-                    ],
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: _isProcessing ? null : () => _sendMessage(_messageController.text),
+                      icon: _isProcessing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Commands: /rollback, /assign, /summarize, /help',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ],
@@ -260,21 +168,119 @@ class _ExpandedCopilot extends StatelessWidget {
       ),
     );
   }
-}
 
-class _ChatMessage extends StatelessWidget {
-  final bool isUser;
-  final String message;
-  final DateTime timestamp;
-  
-  const _ChatMessage({
-    required this.isUser,
-    required this.message,
-    required this.timestamp,
-  });
+  Widget _buildCollapsedCopilot(AppStateProvider appState) {
+    return Container(
+      width: 320,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          left: BorderSide(
+            color: Theme.of(context).dividerColor.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.smart_toy,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'AI Copilot',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.fullscreen),
+                  iconSize: 18,
+                  onPressed: () => appState.toggleCopilot(),
+                  tooltip: 'Expand copilot',
+                ),
+              ],
+            ),
+          ),
 
-  @override
-  Widget build(BuildContext context) {
+          // Chat Messages
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                return _buildMessageBubble(_messages[index]);
+              },
+            ),
+          ),
+
+          // Input Area
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: 'Ask me anything or use /commands...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    maxLines: null,
+                    onSubmitted: _isProcessing ? null : _sendMessage,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _isProcessing ? null : () => _sendMessage(_messageController.text),
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final isUser = message.isUser;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -284,11 +290,7 @@ class _ChatMessage extends StatelessWidget {
             CircleAvatar(
               radius: 16,
               backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Icon(
-                Icons.smart_toy,
-                size: 16,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
+              child: const Icon(Icons.smart_toy, size: 16, color: Colors.white),
             ),
             const SizedBox(width: 12),
           ],
@@ -299,24 +301,54 @@ class _ChatMessage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isUser 
+                    color: isUser
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isUser 
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message.content,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isUser
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (message.requiresApproval) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _approveAction(message),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              ),
+                              child: const Text('Approve', style: TextStyle(fontSize: 12)),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              onPressed: () => _rejectAction(message),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              ),
+                              child: const Text('Reject', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatTimestamp(timestamp),
+                  _formatTime(message.timestamp),
                   style: TextStyle(
                     fontSize: 11,
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
@@ -330,21 +362,103 @@ class _ChatMessage extends StatelessWidget {
             CircleAvatar(
               radius: 16,
               backgroundColor: Theme.of(context).colorScheme.secondary,
-              child: Icon(
-                Icons.person,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSecondary,
-              ),
+              child: const Icon(Icons.person, size: 16, color: Colors.white),
             ),
           ],
         ],
       ),
     );
   }
-  
-  String _formatTimestamp(DateTime timestamp) {
+
+  Future<void> _sendMessage(String text) async {
+    if (text.trim().isEmpty || _isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _messages.add(ChatMessage(
+        content: text,
+        isUser: true,
+        timestamp: DateTime.now(),
+      ));
+    });
+
+    _messageController.clear();
+    _scrollToBottom();
+
+    try {
+      final response = await _copilotService.processCommand(
+        text,
+        userId: 'current_user', // TODO: Get from auth context
+      );
+
+      setState(() {
+        _messages.add(ChatMessage(
+          content: response.message,
+          isUser: false,
+          timestamp: DateTime.now(),
+          requiresApproval: response.requiresApproval,
+          actionData: response.actionData,
+        ));
+        _isProcessing = false;
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _messages.add(ChatMessage(
+          content: 'Error: ${e.toString()}',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+        _isProcessing = false;
+      });
+    }
+  }
+
+  void _approveAction(ChatMessage message) {
+    if (message.actionData != null) {
+      // Execute approved action
+      _copilotService.executeApprovedAction(
+        'action_${DateTime.now().millisecondsSinceEpoch}',
+        message.actionData!,
+        'current_user',
+      );
+      
+      setState(() {
+        _messages.add(ChatMessage(
+          content: '✅ Action approved and executed.',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+      });
+    }
+  }
+
+  void _rejectAction(ChatMessage message) {
+    setState(() {
+      _messages.add(ChatMessage(
+        content: '❌ Action rejected.',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  String _formatTime(DateTime time) {
     final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final difference = now.difference(time);
     
     if (difference.inMinutes < 1) {
       return 'Just now';
@@ -356,4 +470,20 @@ class _ChatMessage extends StatelessWidget {
       return '${difference.inDays}d ago';
     }
   }
+}
+
+class ChatMessage {
+  final String content;
+  final bool isUser;
+  final DateTime timestamp;
+  final bool requiresApproval;
+  final Map<String, dynamic>? actionData;
+
+  ChatMessage({
+    required this.content,
+    required this.isUser,
+    required this.timestamp,
+    this.requiresApproval = false,
+    this.actionData,
+  });
 }

@@ -28,13 +28,50 @@ class DatabaseService {
     
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
   
   Future<void> _onCreate(Database db, int version) async {
+    // Team Members table
+    await db.execute('''
+      CREATE TABLE team_members (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        role TEXT NOT NULL,
+        status TEXT NOT NULL,
+        assignments TEXT,
+        expertise TEXT,
+        workload INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
+    // Tasks table
+    await db.execute('''
+      CREATE TABLE tasks (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        type TEXT NOT NULL,
+        priority TEXT NOT NULL,
+        status TEXT NOT NULL,
+        assignee_id TEXT NOT NULL,
+        estimated_hours INTEGER NOT NULL DEFAULT 0,
+        actual_hours INTEGER NOT NULL DEFAULT 0,
+        related_commits TEXT,
+        dependencies TEXT,
+        created_at INTEGER NOT NULL,
+        due_date INTEGER NOT NULL,
+        completed_at INTEGER,
+        FOREIGN KEY (assignee_id) REFERENCES team_members (id)
+      )
+    ''');
+
     // Security Alerts table
     await db.execute('''
       CREATE TABLE security_alerts (
@@ -126,10 +163,46 @@ class DatabaseService {
         change_detected_at INTEGER
       )
     ''');
+
+    // Specifications table
+    await db.execute('''
+      CREATE TABLE specifications (
+        id TEXT PRIMARY KEY,
+        raw_input TEXT NOT NULL,
+        ai_interpretation TEXT NOT NULL,
+        suggested_branch_name TEXT NOT NULL,
+        suggested_commit_message TEXT NOT NULL,
+        placeholder_diff TEXT,
+        status TEXT NOT NULL DEFAULT 'draft',
+        assigned_to TEXT,
+        created_at INTEGER NOT NULL,
+        approved_at INTEGER,
+        approved_by TEXT,
+        FOREIGN KEY (assigned_to) REFERENCES team_members (id)
+      )
+    ''');
   }
   
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Handle database upgrades here
+    if (oldVersion < 2) {
+      // Add specifications table
+      await db.execute('''
+        CREATE TABLE specifications (
+          id TEXT PRIMARY KEY,
+          raw_input TEXT NOT NULL,
+          ai_interpretation TEXT NOT NULL,
+          suggested_branch_name TEXT NOT NULL,
+          suggested_commit_message TEXT NOT NULL,
+          placeholder_diff TEXT,
+          status TEXT NOT NULL DEFAULT 'draft',
+          assigned_to TEXT,
+          created_at INTEGER NOT NULL,
+          approved_at INTEGER,
+          approved_by TEXT,
+          FOREIGN KEY (assigned_to) REFERENCES team_members (id)
+        )
+      ''');
+    }
   }
   
   Future<void> close() async {

@@ -35,6 +35,13 @@ class LeftSidebar extends StatelessWidget {
                   route: '/',
                 ),
                 _NavigationItem(
+                  icon: Icons.auto_awesome_outlined,
+                  selectedIcon: Icons.auto_awesome,
+                  label: 'AI Workflow',
+                  section: AppSection.workflow,
+                  route: '/workflow',
+                ),
+                _NavigationItem(
                   icon: Icons.security_outlined,
                   selectedIcon: Icons.security,
                   label: 'Security',

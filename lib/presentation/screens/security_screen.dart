@@ -36,7 +36,7 @@ class SecurityScreen extends StatelessWidget {
                   status: 'Protected',
                   description: 'Honeytokens deployed and monitoring active',
                   color: Colors.green,
-                  icon: Icons.database_outlined,
+                  icon: Icons.storage_outlined,
                 ),
               ),
               const SizedBox(width: 16),
@@ -52,7 +52,7 @@ class SecurityScreen extends StatelessWidget {
             ],
           ),
           
-          const SizedBox(width: 16),
+          const SizedBox(height: 16),
           
           Row(
             children: [
