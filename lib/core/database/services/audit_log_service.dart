@@ -238,6 +238,15 @@ class AuditLogService {
     };
   }
 
+  /// Initialize project-specific auditing
+  Future<void> initializeProjectAuditing(String projectId) async {
+    await logAction(
+      actionType: 'project_auditing_initialized',
+      description: 'Project-specific auditing initialized',
+      contextData: {'project_id': projectId},
+    );
+  }
+
   /// Helper method to encode context data as JSON string
   String _encodeContextData(Map<String, dynamic> contextData) {
     try {

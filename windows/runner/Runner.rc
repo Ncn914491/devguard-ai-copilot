@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "devguard_ai_copilot" "\0"
+            VALUE "CompanyName", "DevGuard Team" "\0"
+            VALUE "FileDescription", "DevGuard AI Copilot - AI-powered development security and productivity copilot" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "devguard_ai_copilot" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 DevGuard Team. All rights reserved." "\0"
             VALUE "OriginalFilename", "devguard_ai_copilot.exe" "\0"
-            VALUE "ProductName", "devguard_ai_copilot" "\0"
+            VALUE "ProductName", "DevGuard AI Copilot" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

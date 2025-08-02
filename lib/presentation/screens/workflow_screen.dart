@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/database/services/services.dart';
 import '../../core/database/models/models.dart';
-import '../../core/ai/gemini_service.dart';
 import '../widgets/spec_input_form.dart';
 import '../widgets/spec_list_view.dart';
 

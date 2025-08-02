@@ -10,11 +10,9 @@ class AppTheme {
     onSecondary: Colors.white,
     error: Color(0xFFDC2626),
     onError: Colors.white,
-    background: Color(0xFFFAFAFA),
-    onBackground: Color(0xFF1E293B),
-    surface: Colors.white,
+    surface: Color(0xFFFAFAFA),
     onSurface: Color(0xFF1E293B),
-    surfaceVariant: Color(0xFFF1F5F9),
+    surfaceContainerHighest: Color(0xFFF1F5F9),
     onSurfaceVariant: Color(0xFF475569),
   );
 
@@ -26,11 +24,9 @@ class AppTheme {
     onSecondary: Color(0xFF1E293B),
     error: Color(0xFFEF4444),
     onError: Colors.white,
-    background: Color(0xFF0F172A),
-    onBackground: Color(0xFFF8FAFC),
-    surface: Color(0xFF1E293B),
+    surface: Color(0xFF0F172A),
     onSurface: Color(0xFFF8FAFC),
-    surfaceVariant: Color(0xFF334155),
+    surfaceContainerHighest: Color(0xFF334155),
     onSurfaceVariant: Color(0xFFCBD5E1),
   );
 

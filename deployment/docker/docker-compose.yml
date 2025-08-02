@@ -1,0 +1,231 @@
+# Docker Compose configuration for DevGuard AI Copilot
+# Satisfies Requirements: 13.4 (Containerized deployment with services)
+
+version: '3.8'
+
+services:
+  devguard-ai-copilot:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/Dockerfile
+    image: devguard/ai-copilot:latest
+    container_name: devguard-ai-copilot
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - DATABASE_PATH=/data/devguard.db
+      - GITHUB_INTEGRATION_ENABLED=true
+      - GITLAB_INTEGRATION_ENABLED=true
+      - SECURITY_MONITORING_ENABLED=true
+      - AUDIT_LOGGING_ENABLED=true
+    
+    # Volumes for persistent data
+    volumes:
+      - devguard_data:/data
+      - devguard_logs:/var/log/devguard
+      - devguard_config:/etc/devguard
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For deployment monitoring
+    
+    # Network configuration
+    ports:
+      - "8080:8080"  # Web interface (if applicable)
+      - "8443:8443"  # HTTPS interface (if applicable)
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "devguard_ai_copilot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Dependencies
+    depends_on:
+      - redis
+      - prometheus
+    
+    # Networks
+    networks:
+      - devguard-network
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: devguard-redis
+    restart: unless-stopped
+    
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devguard123}
+    
+    volumes:
+      - redis_data:/data
+    
+    ports:
+      - "6379:6379"
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    networks:
+      - devguard-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: devguard-prometheus
+    restart: unless-stopped
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    
+    ports:
+      - "9090:9090"
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    
+    networks:
+      - devguard-network
+
+  # Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: devguard-grafana
+    restart: unless-stopped
+    
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-devguard123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    
+    ports:
+      - "3000:3000"
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    
+    depends_on:
+      - prometheus
+    
+    networks:
+      - devguard-network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: devguard-nginx
+    restart: unless-stopped
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    depends_on:
+      - devguard-ai-copilot
+      - grafana
+    
+    networks:
+      - devguard-network
+
+# Named volumes for persistent data
+volumes:
+  devguard_data:
+    driver: local
+  devguard_logs:
+    driver: local
+  devguard_config:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+# Networks
+networks:
+  devguard-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

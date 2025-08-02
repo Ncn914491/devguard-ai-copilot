@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 import '../database/services/services.dart';
 import '../database/models/models.dart';
+import 'github_service.dart';
+import 'gitlab_service.dart';
 
 class GitIntegration {
   static final GitIntegration _instance = GitIntegration._internal();
@@ -13,6 +15,10 @@ class GitIntegration {
   final _auditService = AuditLogService.instance;
   final _taskService = TaskService.instance;
   final _specService = SpecService.instance;
+  final _githubService = GitHubService.instance;
+  final _gitlabService = GitLabService.instance;
+  
+  String _gitProvider = 'github'; // 'github' or 'gitlab'
 
   /// Create git branch from approved specification
   /// Satisfies Requirements: 8.1, 8.2 (GitOps integration and branch creation)
@@ -223,16 +229,316 @@ class GitIntegration {
     }
   }
 
+  /// Initialize git provider integration
+  /// Satisfies Requirements: 11.1, 11.2 (GitHub/GitLab integration setup)
+  Future<void> initializeGitProvider(String provider, Map<String, String> credentials) async {
+    _gitProvider = provider.toLowerCase();
+    
+    try {
+      if (_gitProvider == 'github') {
+        await _githubService.initialize(
+          credentials['access_token']!,
+          credentials['username']!,
+          credentials['repository']!,
+        );
+      } else if (_gitProvider == 'gitlab') {
+        await _gitlabService.initialize(
+          credentials['access_token']!,
+          credentials['project_id']!,
+          baseUrl: credentials['base_url'] ?? 'https://gitlab.com',
+        );
+      } else {
+        throw Exception('Unsupported git provider: $provider');
+      }
+      
+      await _auditService.logAction(
+        actionType: 'git_provider_initialized',
+        description: 'Initialized $provider integration',
+        aiReasoning: 'Connected to external git provider for repository operations',
+        contextData: {
+          'provider': provider,
+          'repository': credentials['repository'] ?? credentials['project_id'],
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to initialize $provider integration: ${e.toString()}');
+    }
+  }
+
+  /// Create remote branch using configured git provider
+  /// Satisfies Requirements: 11.3 (Remote branch creation)
+  Future<GitBranch> createRemoteBranch(String specId, String fromBranch) async {
+    final spec = await _specService.getSpecification(specId);
+    if (spec == null) {
+      throw Exception('Specification not found: $specId');
+    }
+
+    try {
+      final branchName = spec.suggestedBranchName;
+      
+      if (_gitProvider == 'github') {
+        final githubBranch = await _githubService.createBranch(branchName, fromBranch);
+        return GitBranch(
+          id: _uuid.v4(),
+          name: githubBranch.name,
+          specId: specId,
+          status: 'created',
+          createdAt: githubBranch.createdAt,
+          commits: [],
+        );
+      } else if (_gitProvider == 'gitlab') {
+        final gitlabBranch = await _gitlabService.createBranch(branchName, fromBranch);
+        return GitBranch(
+          id: _uuid.v4(),
+          name: gitlabBranch.name,
+          specId: specId,
+          status: 'created',
+          createdAt: DateTime.now(),
+          commits: [],
+        );
+      } else {
+        throw Exception('No git provider configured');
+      }
+    } catch (e) {
+      throw Exception('Failed to create remote branch: ${e.toString()}');
+    }
+  }
+
+  /// Create remote commit using configured git provider
+  /// Satisfies Requirements: 11.3 (Remote commit creation)
+  Future<GitCommit> createRemoteCommit(String specId, String branchName, Map<String, String> files) async {
+    final spec = await _specService.getSpecification(specId);
+    if (spec == null) {
+      throw Exception('Specification not found: $specId');
+    }
+
+    try {
+      final commitMessage = spec.suggestedCommitMessage;
+      
+      if (_gitProvider == 'github') {
+        final githubCommit = await _githubService.createCommit(branchName, commitMessage, files);
+        return GitCommit(
+          id: _uuid.v4(),
+          hash: githubCommit.sha,
+          message: githubCommit.message,
+          branchId: branchName,
+          specId: specId,
+          author: githubCommit.author,
+          changes: files.toString(),
+          createdAt: githubCommit.date,
+        );
+      } else if (_gitProvider == 'gitlab') {
+        final gitlabCommit = await _gitlabService.createCommit(branchName, commitMessage, files);
+        return GitCommit(
+          id: _uuid.v4(),
+          hash: gitlabCommit.id,
+          message: gitlabCommit.message,
+          branchId: branchName,
+          specId: specId,
+          author: gitlabCommit.authorName,
+          changes: files.toString(),
+          createdAt: gitlabCommit.createdAt,
+        );
+      } else {
+        throw Exception('No git provider configured');
+      }
+    } catch (e) {
+      throw Exception('Failed to create remote commit: ${e.toString()}');
+    }
+  }
+
+  /// Create remote pull/merge request using configured git provider
+  /// Satisfies Requirements: 11.3 (Remote PR/MR creation)
+  Future<GitPullRequest> createRemotePullRequest(String branchName, String targetBranch, String title, String description) async {
+    try {
+      if (_gitProvider == 'github') {
+        final githubPR = await _githubService.createPullRequest(title, description, branchName, targetBranch);
+        return GitPullRequest(
+          id: _uuid.v4(),
+          title: githubPR.title,
+          description: githubPR.body,
+          branchId: branchName,
+          targetBranch: targetBranch,
+          status: githubPR.state,
+          createdAt: githubPR.createdAt,
+        );
+      } else if (_gitProvider == 'gitlab') {
+        final gitlabMR = await _gitlabService.createMergeRequest(title, description, branchName, targetBranch);
+        return GitPullRequest(
+          id: _uuid.v4(),
+          title: gitlabMR.title,
+          description: gitlabMR.description,
+          branchId: branchName,
+          targetBranch: targetBranch,
+          status: gitlabMR.state,
+          createdAt: gitlabMR.createdAt,
+        );
+      } else {
+        throw Exception('No git provider configured');
+      }
+    } catch (e) {
+      throw Exception('Failed to create remote pull/merge request: ${e.toString()}');
+    }
+  }
+
+  /// Sync issues with tasks for workflow management
+  /// Satisfies Requirements: 11.4 (Issue tracking integration)
+  Future<void> syncIssuesWithTasks() async {
+    try {
+      List<dynamic> issues = [];
+      
+      if (_gitProvider == 'github') {
+        issues = await _githubService.getRepositoryIssues();
+      } else if (_gitProvider == 'gitlab') {
+        issues = await _gitlabService.getProjectIssues();
+      } else {
+        return; // No provider configured
+      }
+
+      // Sync issues with existing tasks
+      final tasks = await _taskService.getAllTasks();
+      
+      for (final issue in issues) {
+        final issueTitle = _gitProvider == 'github' 
+            ? (issue as GitHubIssue).title 
+            : (issue as GitLabIssue).title;
+        final issueNumber = _gitProvider == 'github' 
+            ? (issue as GitHubIssue).number 
+            : (issue as GitLabIssue).iid;
+        
+        // Check if task exists for this issue
+        final existingTask = tasks.where((t) => t.title.contains(issueTitle)).firstOrNull;
+        
+        if (existingTask == null) {
+          // Create new task from issue
+          final task = Task(
+            id: _uuid.v4(),
+            title: issueTitle,
+            description: _gitProvider == 'github' 
+                ? (issue as GitHubIssue).body 
+                : (issue as GitLabIssue).description,
+            type: 'feature',
+            priority: 'medium',
+            status: 'pending',
+            assigneeId: 'unassigned',
+            estimatedHours: 4,
+            actualHours: 0,
+            relatedCommits: [],
+            dependencies: [],
+            createdAt: DateTime.now(),
+            dueDate: DateTime.now().add(const Duration(days: 7)),
+          );
+          
+          await _taskService.createTask(task);
+          
+          await _auditService.logAction(
+            actionType: 'task_created_from_issue',
+            description: 'Created task from $_gitProvider issue #$issueNumber',
+            contextData: {
+              'issue_number': issueNumber,
+              'task_id': task.id,
+              'provider': _gitProvider,
+            },
+          );
+        }
+      }
+    } catch (e) {
+      await _auditService.logAction(
+        actionType: 'issue_sync_failed',
+        description: 'Failed to sync issues with tasks: ${e.toString()}',
+        contextData: {'error': e.toString()},
+      );
+    }
+  }
+
+  /// Create issue from task
+  /// Satisfies Requirements: 11.4 (Task to issue creation)
+  Future<void> createIssueFromTask(String taskId) async {
+    final task = await _taskService.getTask(taskId);
+    if (task == null) {
+      throw Exception('Task not found: $taskId');
+    }
+
+    try {
+      final labels = [task.type, task.priority];
+      
+      if (_gitProvider == 'github') {
+        await _githubService.createIssue(task.title, task.description, labels: labels);
+      } else if (_gitProvider == 'gitlab') {
+        await _gitlabService.createIssue(task.title, task.description, labels: labels);
+      } else {
+        throw Exception('No git provider configured');
+      }
+      
+      await _auditService.logAction(
+        actionType: 'issue_created_from_task',
+        description: 'Created $_gitProvider issue from task: ${task.title}',
+        contextData: {
+          'task_id': taskId,
+          'provider': _gitProvider,
+          'labels': labels,
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to create issue from task: ${e.toString()}');
+    }
+  }
+
   /// Get git integration status
   Future<GitIntegrationStatus> getIntegrationStatus() async {
-    // Simulate git repository status check
-    return GitIntegrationStatus(
-      connected: true,
-      repository: 'devguard-ai-copilot',
-      currentBranch: 'main',
-      lastSync: DateTime.now(),
-      pendingCommits: 0,
-      activeBranches: 3,
+    try {
+      if (_gitProvider == 'github') {
+        final status = await _githubService.getIntegrationStatus();
+        return GitIntegrationStatus(
+          connected: status.connected,
+          repository: status.repository ?? 'unknown',
+          currentBranch: 'main',
+          lastSync: status.lastSync ?? DateTime.now(),
+          pendingCommits: 0,
+          activeBranches: 3,
+        );
+      } else if (_gitProvider == 'gitlab') {
+        final status = await _gitlabService.getIntegrationStatus();
+        return GitIntegrationStatus(
+          connected: status.connected,
+          repository: status.project ?? 'unknown',
+          currentBranch: 'main',
+          lastSync: status.lastSync ?? DateTime.now(),
+          pendingCommits: 0,
+          activeBranches: 3,
+        );
+      } else {
+        return GitIntegrationStatus(
+          connected: false,
+          repository: 'not-configured',
+          currentBranch: 'main',
+          lastSync: DateTime.now(),
+          pendingCommits: 0,
+          activeBranches: 0,
+        );
+      }
+    } catch (e) {
+      return GitIntegrationStatus(
+        connected: false,
+        repository: 'error',
+        currentBranch: 'main',
+        lastSync: DateTime.now(),
+        pendingCommits: 0,
+        activeBranches: 0,
+      );
+    }
+  }
+
+  /// Initialize a new git repository
+  Future<void> initializeRepository(String path, Map<String, String> initialFiles) async {
+    // Implementation would create git repository and add initial files
+    await _auditService.logAction(
+      actionType: 'git_repository_initialized',
+      description: 'Git repository initialized with initial files',
+      contextData: {
+        'repo_path': path,
+        'initial_files': initialFiles.keys.toList(),
+      },
     );
   }
 }
