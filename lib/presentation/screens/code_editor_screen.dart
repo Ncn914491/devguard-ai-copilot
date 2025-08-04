@@ -9,7 +9,7 @@ import '../../core/gitops/git_integration.dart';
 /// Code editor screen with integrated terminal and file explorer
 /// Provides syntax highlighting and AI-assisted code suggestions
 class CodeEditorScreen extends StatefulWidget {
-  const CodeEditorScreen({Key? key}) : super(key: key);
+  const CodeEditorScreen({super.key});
 
   @override
   State<CodeEditorScreen> createState() => _CodeEditorScreenState();
@@ -19,11 +19,11 @@ class _CodeEditorScreenState extends State<CodeEditorScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   late TabController _bottomTabController;
-  
+
   final List<EditorTab> _openTabs = [];
   final _authService = AuthService.instance;
   final _gitIntegration = GitIntegration.instance;
-  
+
   bool _isTerminalVisible = true;
   bool _isFileExplorerVisible = true;
   double _terminalHeight = 200.0;
@@ -50,7 +50,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen>
       _showPermissionError();
       return;
     }
-    
+
     // Load recent files or create welcome tab
     if (_openTabs.isEmpty) {
       _openWelcomeTab();
@@ -75,7 +75,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen>
       language: 'markdown',
       isModified: false,
     );
-    
+
     setState(() {
       _openTabs.add(welcomeTab);
       _tabController = TabController(length: _openTabs.length, vsync: this);
@@ -114,12 +114,13 @@ Happy coding! 🚀
 
   void _openFile(String filePath) {
     // Check if file is already open
-    final existingTabIndex = _openTabs.indexWhere((tab) => tab.filePath == filePath);
+    final existingTabIndex =
+        _openTabs.indexWhere((tab) => tab.filePath == filePath);
     if (existingTabIndex != -1) {
       _tabController.animateTo(existingTabIndex);
       return;
     }
-    
+
     // Create new tab
     final newTab = EditorTab(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -129,7 +130,7 @@ Happy coding! 🚀
       language: _detectLanguage(filePath),
       isModified: false,
     );
-    
+
     setState(() {
       _openTabs.add(newTab);
       _tabController = TabController(
@@ -144,7 +145,7 @@ Happy coding! 🚀
     // In a real implementation, this would load file from filesystem
     // For demo purposes, return sample content based on file type
     final extension = filePath.split('.').last.toLowerCase();
-    
+
     switch (extension) {
       case 'dart':
         return '''import 'package:flutter/material.dart';
@@ -186,7 +187,7 @@ if __name__ == "__main__":
 
   String _detectLanguage(String filePath) {
     final extension = filePath.split('.').last.toLowerCase();
-    
+
     switch (extension) {
       case 'dart':
         return 'dart';
@@ -249,7 +250,7 @@ if __name__ == "__main__":
       _showUnsavedChangesDialog(index);
       return;
     }
-    
+
     setState(() {
       _openTabs.removeAt(index);
       if (_openTabs.isEmpty) {
@@ -269,7 +270,8 @@ if __name__ == "__main__":
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Unsaved Changes'),
-        content: Text('Do you want to save changes to ${_openTabs[index].title}?'),
+        content:
+            Text('Do you want to save changes to ${_openTabs[index].title}?'),
         actions: [
           TextButton(
             onPressed: () {
@@ -324,7 +326,7 @@ if __name__ == "__main__":
     setState(() {
       _openTabs[index] = _openTabs[index].copyWith(isModified: false);
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Saved ${_openTabs[index].title}')),
     );
@@ -346,7 +348,7 @@ if __name__ == "__main__":
         children: [
           // Menu bar
           _buildMenuBar(),
-          
+
           // Main editor area
           Expanded(
             child: Row(
@@ -360,14 +362,15 @@ if __name__ == "__main__":
                       onFileCreated: (path) => _openFile(path),
                     ),
                   ),
-                
+
                 // Resize handle for file explorer
                 if (_isFileExplorerVisible)
                   GestureDetector(
                     onPanUpdate: (details) {
                       setState(() {
                         _fileExplorerWidth += details.delta.dx;
-                        _fileExplorerWidth = _fileExplorerWidth.clamp(200.0, 400.0);
+                        _fileExplorerWidth =
+                            _fileExplorerWidth.clamp(200.0, 400.0);
                       });
                     },
                     child: Container(
@@ -379,7 +382,7 @@ if __name__ == "__main__":
                       ),
                     ),
                   ),
-                
+
                 // Editor tabs and content
                 Expanded(
                   child: Column(
@@ -421,33 +424,37 @@ if __name__ == "__main__":
                             }).toList(),
                           ),
                         ),
-                      
+
                       // Editor content
                       Expanded(
                         child: _openTabs.isEmpty
                             ? const Center(child: Text('No files open'))
                             : TabBarView(
                                 controller: _tabController,
-                                children: _openTabs.asMap().entries.map((entry) {
+                                children:
+                                    _openTabs.asMap().entries.map((entry) {
                                   final index = entry.key;
                                   final tab = entry.value;
                                   return CodeEditorWidget(
                                     content: tab.content,
                                     language: tab.language,
-                                    onChanged: (content) => _onContentChanged(index, content),
-                                    readOnly: !_authService.hasPermission('commit_code'),
+                                    onChanged: (content) =>
+                                        _onContentChanged(index, content),
+                                    readOnly: !_authService
+                                        .hasPermission('commit_code'),
                                   );
                                 }).toList(),
                               ),
                       ),
-                      
+
                       // Bottom panel (terminal, problems, etc.)
                       if (_isTerminalVisible)
                         GestureDetector(
                           onPanUpdate: (details) {
                             setState(() {
                               _terminalHeight -= details.delta.dy;
-                              _terminalHeight = _terminalHeight.clamp(100.0, 400.0);
+                              _terminalHeight =
+                                  _terminalHeight.clamp(100.0, 400.0);
                             });
                           },
                           child: Container(
@@ -459,7 +466,7 @@ if __name__ == "__main__":
                             ),
                           ),
                         ),
-                      
+
                       if (_isTerminalVisible)
                         SizedBox(
                           height: _terminalHeight,
@@ -478,7 +485,7 @@ if __name__ == "__main__":
                                   ],
                                 ),
                               ),
-                              
+
                               // Bottom tab content
                               Expanded(
                                 child: TabBarView(
@@ -522,13 +529,15 @@ if __name__ == "__main__":
             MenuAction('Undo', Icons.undo, () => _undo()),
             MenuAction('Redo', Icons.redo, () => _redo()),
             MenuAction('Find', Icons.search, () => _showFindDialog()),
-            MenuAction('Replace', Icons.find_replace, () => _showReplaceDialog()),
+            MenuAction(
+                'Replace', Icons.find_replace, () => _showReplaceDialog()),
           ]),
           _buildMenuButton('View', [
             MenuAction(
               _isFileExplorerVisible ? 'Hide Explorer' : 'Show Explorer',
               Icons.folder,
-              () => setState(() => _isFileExplorerVisible = !_isFileExplorerVisible),
+              () => setState(
+                  () => _isFileExplorerVisible = !_isFileExplorerVisible),
             ),
             MenuAction(
               _isTerminalVisible ? 'Hide Terminal' : 'Show Terminal',
@@ -589,7 +598,8 @@ if __name__ == "__main__":
       color: Theme.of(context).cardColor,
       child: const Padding(
         padding: EdgeInsets.all(8.0),
-        child: Text('Output panel - compilation results and logs will appear here'),
+        child: Text(
+            'Output panel - compilation results and logs will appear here'),
       ),
     );
   }

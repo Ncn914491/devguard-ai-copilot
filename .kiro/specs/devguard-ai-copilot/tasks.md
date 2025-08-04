@@ -99,6 +99,7 @@
 
 - [x] 9. Implement rollback mechanism with human approval
 
+
   - Create rollback system that restores from deployment snapshots
   - Build AI explanation generator for rollback recommendations
   - Implement human confirmation workflow for rollback operations

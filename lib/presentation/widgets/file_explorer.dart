@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/services/file_system_service.dart';
+import '../../core/api/repository_api.dart';
+import 'merge_conflict_resolver.dart';
 
 /// File explorer widget for repository navigation
 class FileExplorer extends StatefulWidget {
@@ -7,10 +11,10 @@ class FileExplorer extends StatefulWidget {
   final Function(String) onFileCreated;
 
   const FileExplorer({
-    Key? key,
+    super.key,
     required this.onFileSelected,
     required this.onFileCreated,
-  }) : super(key: key);
+  });
 
   @override
   State<FileExplorer> createState() => _FileExplorerState();
@@ -20,7 +24,7 @@ class _FileExplorerState extends State<FileExplorer> {
   final _authService = AuthService.instance;
   final Map<String, bool> _expandedFolders = {};
   String? _selectedFile;
-  
+
   // Mock file system structure
   final Map<String, FileSystemItem> _fileSystem = {
     'lib': FileSystemItem(
@@ -32,6 +36,7 @@ class _FileExplorerState extends State<FileExplorer> {
           name: 'main.dart',
           type: FileSystemItemType.file,
           path: 'lib/main.dart',
+          gitStatus: GitFileStatus.modified,
         ),
         'core': FileSystemItem(
           name: 'core',
@@ -145,7 +150,7 @@ class _FileExplorerState extends State<FileExplorer> {
 
   IconData _getFileIcon(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
-    
+
     switch (extension) {
       case 'dart':
         return Icons.code;
@@ -179,7 +184,7 @@ class _FileExplorerState extends State<FileExplorer> {
 
   Color _getFileColor(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
-    
+
     switch (extension) {
       case 'dart':
         return Colors.blue;
@@ -209,6 +214,23 @@ class _FileExplorerState extends State<FileExplorer> {
     }
   }
 
+  Color _getGitStatusColor(GitFileStatus status) {
+    switch (status) {
+      case GitFileStatus.modified:
+        return Colors.orange;
+      case GitFileStatus.added:
+        return Colors.green;
+      case GitFileStatus.deleted:
+        return Colors.red;
+      case GitFileStatus.untracked:
+        return Colors.blue;
+      case GitFileStatus.conflicted:
+        return Colors.purple;
+      case GitFileStatus.clean:
+        return Colors.transparent;
+    }
+  }
+
   void _toggleFolder(String path) {
     setState(() {
       _expandedFolders[path] = !(_expandedFolders[path] ?? false);
@@ -222,10 +244,11 @@ class _FileExplorerState extends State<FileExplorer> {
     widget.onFileSelected(path);
   }
 
-  void _showContextMenu(BuildContext context, String path, FileSystemItem item) {
+  void _showContextMenu(
+      BuildContext context, String path, FileSystemItem item) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final position = renderBox.localToGlobal(Offset.zero);
-    
+
     showMenu(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -235,12 +258,17 @@ class _FileExplorerState extends State<FileExplorer> {
         position.dy + renderBox.size.height,
       ),
       items: _buildContextMenuItems(path, item),
-    );
+    ).then((value) {
+      if (value != null) {
+        _handleContextMenuAction(value, path, item);
+      }
+    });
   }
 
-  List<PopupMenuEntry<String>> _buildContextMenuItems(String path, FileSystemItem item) {
+  List<PopupMenuEntry<String>> _buildContextMenuItems(
+      String path, FileSystemItem item) {
     final List<PopupMenuEntry<String>> items = [];
-    
+
     if (item.type == FileSystemItemType.folder) {
       items.addAll([
         const PopupMenuItem<String>(
@@ -266,7 +294,7 @@ class _FileExplorerState extends State<FileExplorer> {
         const PopupMenuDivider(),
       ]);
     }
-    
+
     items.addAll([
       const PopupMenuItem<String>(
         value: 'rename',
@@ -289,7 +317,7 @@ class _FileExplorerState extends State<FileExplorer> {
         ),
       ),
     ]);
-    
+
     if (item.type == FileSystemItemType.file) {
       items.addAll([
         const PopupMenuDivider(),
@@ -304,12 +332,51 @@ class _FileExplorerState extends State<FileExplorer> {
           ),
         ),
       ]);
+
+      // Add git operations if user has permissions
+      if (_authService.hasPermission('commit_code')) {
+        items.addAll([
+          const PopupMenuDivider(),
+          const PopupMenuItem<String>(
+            value: 'git_add',
+            child: Row(
+              children: [
+                Icon(Icons.add_circle, size: 16, color: Colors.green),
+                SizedBox(width: 8),
+                Text('Git Add'),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
+            value: 'git_diff',
+            child: Row(
+              children: [
+                Icon(Icons.compare_arrows, size: 16, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('Show Diff'),
+              ],
+            ),
+          ),
+          if (item.gitStatus == GitFileStatus.modified)
+            const PopupMenuItem<String>(
+              value: 'git_restore',
+              child: Row(
+                children: [
+                  Icon(Icons.restore, size: 16, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Restore File'),
+                ],
+              ),
+            ),
+        ]);
+      }
     }
-    
+
     return items;
   }
 
-  void _handleContextMenuAction(String action, String path, FileSystemItem item) {
+  void _handleContextMenuAction(
+      String action, String path, FileSystemItem item) {
     switch (action) {
       case 'new_file':
         _showNewFileDialog(path);
@@ -326,6 +393,15 @@ class _FileExplorerState extends State<FileExplorer> {
       case 'copy_path':
         _copyPathToClipboard(path);
         break;
+      case 'git_add':
+        _gitAddFile(path);
+        break;
+      case 'git_diff':
+        _showGitDiff(path);
+        break;
+      case 'git_restore':
+        _gitRestoreFile(path);
+        break;
     }
   }
 
@@ -334,7 +410,7 @@ class _FileExplorerState extends State<FileExplorer> {
       _showPermissionError();
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => _NewItemDialog(
@@ -354,7 +430,7 @@ class _FileExplorerState extends State<FileExplorer> {
       _showPermissionError();
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => _NewItemDialog(
@@ -373,7 +449,7 @@ class _FileExplorerState extends State<FileExplorer> {
       _showPermissionError();
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => _RenameDialog(
@@ -391,7 +467,7 @@ class _FileExplorerState extends State<FileExplorer> {
       _showPermissionError();
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -431,6 +507,95 @@ class _FileExplorerState extends State<FileExplorer> {
     );
   }
 
+  void _gitAddFile(String filePath) {
+    if (!_authService.hasPermission('commit_code')) {
+      _showPermissionError();
+      return;
+    }
+
+    // Simulate git add operation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Added $filePath to staging area')),
+    );
+
+    // In a real implementation, this would update the git status
+    setState(() {
+      // Update file status to added
+    });
+  }
+
+  void _showGitDiff(String filePath) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Git Diff - $filePath'),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: SingleChildScrollView(
+            child: Text(
+              '''@@ -1,5 +1,7 @@
+ import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
+ 
+ void main() {
+   runApp(MyApp());
+ }
++
++// Added new comment''',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _gitRestoreFile(String filePath) {
+    if (!_authService.hasPermission('commit_code')) {
+      _showPermissionError();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore File'),
+        content: Text(
+            'Are you sure you want to restore "$filePath" to its last committed state? This will discard all changes.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Restored $filePath')),
+              );
+              // In a real implementation, this would restore the file
+              setState(() {
+                // Update file status to clean
+              });
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -442,7 +607,7 @@ class _FileExplorerState extends State<FileExplorer> {
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               border: Border(
                 bottom: BorderSide(
                   color: Theme.of(context).colorScheme.outline,
@@ -512,7 +677,7 @@ class _FileExplorerState extends State<FileExplorer> {
               ],
             ),
           ),
-          
+
           // File tree
           Expanded(
             child: ListView(
@@ -526,7 +691,7 @@ class _FileExplorerState extends State<FileExplorer> {
 
   List<Widget> _buildFileTree(Map<String, FileSystemItem> items, int depth) {
     final List<Widget> widgets = [];
-    
+
     final sortedItems = items.entries.toList()
       ..sort((a, b) {
         // Folders first, then files
@@ -535,12 +700,12 @@ class _FileExplorerState extends State<FileExplorer> {
         }
         return a.key.compareTo(b.key);
       });
-    
+
     for (final entry in sortedItems) {
       final item = entry.value;
       final isExpanded = _expandedFolders[item.path] ?? false;
       final isSelected = _selectedFile == item.path;
-      
+
       widgets.add(
         GestureDetector(
           onTap: () {
@@ -570,14 +735,31 @@ class _FileExplorerState extends State<FileExplorer> {
                 else
                   const SizedBox(width: 16),
                 const SizedBox(width: 4),
-                Icon(
-                  item.type == FileSystemItemType.folder
-                      ? (isExpanded ? Icons.folder_open : Icons.folder)
-                      : _getFileIcon(item.name),
-                  size: 16,
-                  color: item.type == FileSystemItemType.folder
-                      ? Theme.of(context).colorScheme.primary
-                      : _getFileColor(item.name),
+                Stack(
+                  children: [
+                    Icon(
+                      item.type == FileSystemItemType.folder
+                          ? (isExpanded ? Icons.folder_open : Icons.folder)
+                          : _getFileIcon(item.name),
+                      size: 16,
+                      color: item.type == FileSystemItemType.folder
+                          ? Theme.of(context).colorScheme.primary
+                          : _getFileColor(item.name),
+                    ),
+                    if (item.gitStatus != GitFileStatus.clean)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _getGitStatusColor(item.gitStatus),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -597,7 +779,7 @@ class _FileExplorerState extends State<FileExplorer> {
           ),
         ),
       );
-      
+
       // Add children if folder is expanded
       if (item.type == FileSystemItemType.folder &&
           isExpanded &&
@@ -605,7 +787,7 @@ class _FileExplorerState extends State<FileExplorer> {
         widgets.addAll(_buildFileTree(item.children!, depth + 1));
       }
     }
-    
+
     return widgets;
   }
 }
@@ -742,12 +924,14 @@ class FileSystemItem {
   final FileSystemItemType type;
   final String path;
   final Map<String, FileSystemItem>? children;
+  final GitFileStatus gitStatus;
 
   FileSystemItem({
     required this.name,
     required this.type,
     required this.path,
     this.children,
+    this.gitStatus = GitFileStatus.clean,
   });
 }
 
@@ -755,4 +939,14 @@ class FileSystemItem {
 enum FileSystemItemType {
   file,
   folder,
+}
+
+/// Git file status
+enum GitFileStatus {
+  clean,
+  modified,
+  added,
+  deleted,
+  untracked,
+  conflicted,
 }

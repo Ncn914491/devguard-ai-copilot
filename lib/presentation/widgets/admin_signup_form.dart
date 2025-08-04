@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/services/project_service.dart';
-import '../../core/models/project.dart';
 
 /// Admin signup form for creating new projects
 class AdminSignupForm extends StatefulWidget {
@@ -18,7 +17,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
   final _confirmPasswordController = TextEditingController();
   final _projectNameController = TextEditingController();
   final _projectDescriptionController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -58,13 +57,15 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
                 ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: _isLoading ? null : () {
-                  if (details.stepIndex == 2) {
-                    _createProject();
-                  } else {
-                    details.onStepContinue?.call();
-                  }
-                },
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        if (details.stepIndex == 2) {
+                          _createProject();
+                        } else {
+                          details.onStepContinue?.call();
+                        }
+                      },
                 child: _isLoading
                     ? const SizedBox(
                         width: 16,
@@ -101,8 +102,11 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
             title: const Text('Project Details'),
             content: _buildProjectDetailsStep(),
             isActive: _currentStep >= 1,
-            state: _currentStep > 1 ? StepState.complete : 
-                   _currentStep == 1 ? StepState.indexed : StepState.disabled,
+            state: _currentStep > 1
+                ? StepState.complete
+                : _currentStep == 1
+                    ? StepState.indexed
+                    : StepState.disabled,
           ),
           Step(
             title: const Text('Configuration'),
@@ -122,8 +126,8 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         Text(
           'Create Admin Account',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -131,7 +135,6 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
-        
         TextFormField(
           controller: _nameController,
           decoration: const InputDecoration(
@@ -147,7 +150,6 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           },
         ),
         const SizedBox(height: 16),
-        
         TextFormField(
           controller: _emailController,
           decoration: const InputDecoration(
@@ -167,7 +169,6 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           },
         ),
         const SizedBox(height: 16),
-        
         TextFormField(
           controller: _passwordController,
           decoration: InputDecoration(
@@ -175,7 +176,8 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
             hintText: 'Enter a secure password',
             prefixIcon: const Icon(Icons.lock),
             suffixIcon: IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+              icon: Icon(
+                  _obscurePassword ? Icons.visibility : Icons.visibility_off),
               onPressed: () {
                 setState(() {
                   _obscurePassword = !_obscurePassword;
@@ -195,7 +197,6 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           },
         ),
         const SizedBox(height: 16),
-        
         TextFormField(
           controller: _confirmPasswordController,
           decoration: InputDecoration(
@@ -203,7 +204,9 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
             hintText: 'Confirm your password',
             prefixIcon: const Icon(Icons.lock_outline),
             suffixIcon: IconButton(
-              icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
+              icon: Icon(_obscureConfirmPassword
+                  ? Icons.visibility
+                  : Icons.visibility_off),
               onPressed: () {
                 setState(() {
                   _obscureConfirmPassword = !_obscureConfirmPassword;
@@ -233,8 +236,8 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         Text(
           'Project Information',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -242,7 +245,6 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
-        
         TextFormField(
           controller: _projectNameController,
           decoration: const InputDecoration(
@@ -261,7 +263,6 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           },
         ),
         const SizedBox(height: 16),
-        
         TextFormField(
           controller: _projectDescriptionController,
           decoration: const InputDecoration(
@@ -288,8 +289,8 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         Text(
           'Project Configuration',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -297,20 +298,17 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
-        
         _buildSummaryCard('Admin Account', [
           'Name: ${_nameController.text}',
           'Email: ${_emailController.text}',
           'Role: Project Administrator',
         ]),
         const SizedBox(height: 16),
-        
         _buildSummaryCard('Project Details', [
           'Name: ${_projectNameController.text}',
           'Description: ${_projectDescriptionController.text}',
         ]),
         const SizedBox(height: 16),
-        
         _buildSummaryCard('Default Settings', [
           '✓ Security monitoring enabled',
           '✓ Git repository initialized',
@@ -331,17 +329,17 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
             Text(
               title,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                item,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            )),
+                  padding: const EdgeInsets.only(bottom: 4.0),
+                  child: Text(
+                    item,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                )),
           ],
         ),
       ),
@@ -385,7 +383,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
               backgroundColor: Colors.green,
             ),
           );
-          
+
           // Navigate to main application
           Navigator.of(context).pushReplacementNamed('/main');
         }

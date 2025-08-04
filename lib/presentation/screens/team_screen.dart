@@ -18,7 +18,7 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
   final _specService = SpecService.instance;
   final _onboardingService = OnboardingService.instance;
   final _authService = AuthService.instance;
-  
+
   List<TeamMember> _teamMembers = [];
   List<Task> _tasks = [];
   List<Specification> _specifications = [];
@@ -34,18 +34,18 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
 
   Future<void> _loadTeamData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final members = await _teamMemberService.getAllTeamMembers();
       final tasks = await _taskService.getAllTasks();
       final specs = await _specService.getAllSpecifications();
-      
+
       // Load pending join requests if user has admin permissions
       List<JoinRequest> pendingRequests = [];
       if (_authService.hasPermission('manage_users')) {
         pendingRequests = await _onboardingService.getPendingRequests();
       }
-      
+
       setState(() {
         _teamMembers = members;
         _tasks = tasks;
@@ -66,7 +66,7 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final hasAdminPermissions = _authService.hasPermission('manage_users');
-    
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -78,8 +78,8 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
               Text(
                 'Team Dashboard',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
               const Spacer(),
               if (hasAdminPermissions) ...[
@@ -99,24 +99,27 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 8),
           Text(
-            hasAdminPermissions 
+            hasAdminPermissions
                 ? 'Manage team members, review join requests, and track progress'
                 : 'View team members and track progress',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.7),
+                ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Team Overview Cards
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else
             _buildTeamOverview(),
-          
+
           const SizedBox(height: 32),
-          
+
           // Tab Bar (only show if admin)
           if (hasAdminPermissions) ...[
             TabBar(
@@ -148,7 +151,8 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                             color: Colors.red,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          constraints:
+                              const BoxConstraints(minWidth: 16, minHeight: 16),
                           child: Text(
                             '${_pendingRequests.length}',
                             style: const TextStyle(
@@ -167,11 +171,13 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 16),
           ],
-          
+
           // Content based on selected tab
           Expanded(
-            child: hasAdminPermissions 
-                ? (_selectedTabIndex == 0 ? _buildTeamMembersTab() : _buildJoinRequestsTab())
+            child: hasAdminPermissions
+                ? (_selectedTabIndex == 0
+                    ? _buildTeamMembersTab()
+                    : _buildJoinRequestsTab())
                 : _buildTeamMembersTab(),
           ),
         ],
@@ -180,11 +186,12 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildTeamOverview() {
-    final activeMembers = _teamMembers.where((m) => m.status == 'active').length;
+    final activeMembers =
+        _teamMembers.where((m) => m.status == 'active').length;
     final benchMembers = _teamMembers.where((m) => m.status == 'bench').length;
     final totalTasks = _tasks.length;
     final completedTasks = _tasks.where((t) => t.status == 'completed').length;
-    
+
     return Row(
       children: [
         Expanded(
@@ -219,15 +226,21 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
         const SizedBox(width: 16),
         Expanded(
           child: _OverviewCard(
-            title: _authService.hasPermission('manage_users') ? 'Join Requests' : 'Specifications',
-            value: _authService.hasPermission('manage_users') ? '${_pendingRequests.length}' : '${_specifications.length}',
-            subtitle: _authService.hasPermission('manage_users') 
-                ? 'Pending approval' 
+            title: _authService.hasPermission('manage_users')
+                ? 'Join Requests'
+                : 'Specifications',
+            value: _authService.hasPermission('manage_users')
+                ? '${_pendingRequests.length}'
+                : '${_specifications.length}',
+            subtitle: _authService.hasPermission('manage_users')
+                ? 'Pending approval'
                 : '${_specifications.where((s) => s.status == 'approved').length} approved',
-            color: _authService.hasPermission('manage_users') 
+            color: _authService.hasPermission('manage_users')
                 ? (_pendingRequests.isNotEmpty ? Colors.red : Colors.purple)
                 : Colors.purple,
-            icon: _authService.hasPermission('manage_users') ? Icons.person_add_alt : Icons.description,
+            icon: _authService.hasPermission('manage_users')
+                ? Icons.person_add_alt
+                : Icons.description,
           ),
         ),
       ],
@@ -244,8 +257,8 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
             Text(
               'Team Members',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 16),
             Expanded(
@@ -257,21 +270,34 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                           Icon(
                             Icons.people_outline,
                             size: 48,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.3),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No team members',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Add team members to start managing assignments',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.5),
+                                ),
                           ),
                         ],
                       ),
@@ -281,8 +307,14 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                       itemBuilder: (context, index) {
                         return _TeamMemberCard(
                           member: _teamMembers[index],
-                          tasks: _tasks.where((t) => t.assigneeId == _teamMembers[index].id).toList(),
-                          specifications: _specifications.where((s) => s.assignedTo == _teamMembers[index].id).toList(),
+                          tasks: _tasks
+                              .where(
+                                  (t) => t.assigneeId == _teamMembers[index].id)
+                              .toList(),
+                          specifications: _specifications
+                              .where(
+                                  (s) => s.assignedTo == _teamMembers[index].id)
+                              .toList(),
                           onAssignSpec: _showAssignSpecDialog,
                         );
                       },
@@ -307,12 +339,13 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                 Text(
                   'Join Requests',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 if (_pendingRequests.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
@@ -323,7 +356,7 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.pending_actions,
                           size: 16,
                           color: Colors.red,
@@ -331,10 +364,11 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                         const SizedBox(width: 6),
                         Text(
                           '${_pendingRequests.length} pending',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                         ),
                       ],
                     ),
@@ -351,21 +385,34 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                           Icon(
                             Icons.person_add_alt_outlined,
                             size: 48,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.3),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No pending join requests',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'New join requests will appear here for review',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.5),
+                                ),
                           ),
                         ],
                       ),
@@ -397,7 +444,9 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
             _loadTeamData();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Team member ${member.name} added successfully')),
+                SnackBar(
+                    content:
+                        Text('Team member ${member.name} added successfully')),
               );
             }
           } catch (e) {
@@ -413,8 +462,10 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
   }
 
   void _showAssignSpecDialog(TeamMember member) {
-    final availableSpecs = _specifications.where((s) => s.assignedTo == null && s.status == 'approved').toList();
-    
+    final availableSpecs = _specifications
+        .where((s) => s.assignedTo == null && s.status == 'approved')
+        .toList();
+
     if (availableSpecs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No available specifications to assign')),
@@ -440,17 +491,21 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
                   Navigator.of(context).pop();
                   try {
                     final updatedSpec = spec.copyWith(assignedTo: member.id);
-                    await _specService.updateSpecificationStatus(spec.id, 'in_progress');
+                    await _specService.updateSpecificationStatus(
+                        spec.id, 'in_progress');
                     _loadTeamData();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Specification assigned to ${member.name}')),
+                        SnackBar(
+                            content: Text(
+                                'Specification assigned to ${member.name}')),
                       );
                     }
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error assigning specification: $e')),
+                        SnackBar(
+                            content: Text('Error assigning specification: $e')),
                       );
                     }
                   }
@@ -469,10 +524,12 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _approveJoinRequest(JoinRequest request, String? adminNotes) async {
+  Future<void> _approveJoinRequest(
+      JoinRequest request, String? adminNotes) async {
     try {
-      final success = await _onboardingService.approveRequest(request.id, adminNotes: adminNotes);
-      
+      final success = await _onboardingService.approveRequest(request.id,
+          adminNotes: adminNotes);
+
       if (success) {
         await _loadTeamData(); // Refresh data
         if (mounted) {
@@ -507,8 +564,9 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
 
   Future<void> _rejectJoinRequest(JoinRequest request, String reason) async {
     try {
-      final success = await _onboardingService.rejectRequest(request.id, reason);
-      
+      final success =
+          await _onboardingService.rejectRequest(request.id, reason);
+
       if (success) {
         await _loadTeamData(); // Refresh data
         if (mounted) {
@@ -548,7 +606,7 @@ class _OverviewCard extends StatelessWidget {
   final String subtitle;
   final Color color;
   final IconData icon;
-  
+
   const _OverviewCard({
     required this.title,
     required this.value,
@@ -572,8 +630,8 @@ class _OverviewCard extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ],
             ),
@@ -581,16 +639,19 @@ class _OverviewCard extends StatelessWidget {
             Text(
               value,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
+                  ),
             ),
           ],
         ),
@@ -604,7 +665,7 @@ class _TeamMemberCard extends StatelessWidget {
   final List<Task> tasks;
   final List<Specification> specifications;
   final Function(TeamMember) onAssignSpec;
-  
+
   const _TeamMemberCard({
     required this.member,
     required this.tasks,
@@ -627,7 +688,8 @@ class _TeamMemberCard extends StatelessWidget {
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   child: Text(
                     member.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -637,15 +699,19 @@ class _TeamMemberCard extends StatelessWidget {
                     children: [
                       Text(
                         member.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                       ),
                       Text(
                         '${member.role} • ${member.email}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.7),
+                            ),
                       ),
                     ],
                   ),
@@ -674,31 +740,37 @@ class _TeamMemberCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Expertise
             if (member.expertise.isNotEmpty) ...[
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: member.expertise.map((skill) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    skill,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                )).toList(),
+                children: member.expertise
+                    .map((skill) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            skill,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onPrimaryContainer,
+                            ),
+                          ),
+                        ))
+                    .toList(),
               ),
               const SizedBox(height: 12),
             ],
-            
+
             // Workload and assignments
             Row(
               children: [
@@ -709,16 +781,21 @@ class _TeamMemberCard extends StatelessWidget {
                       Text(
                         'Workload: ${member.workload}/10',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                              fontWeight: FontWeight.w500,
+                            ),
                       ),
                       const SizedBox(height: 4),
                       LinearProgressIndicator(
                         value: member.workload / 10,
-                        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          member.workload > 8 ? Colors.red : 
-                          member.workload > 6 ? Colors.orange : Colors.green,
+                          member.workload > 8
+                              ? Colors.red
+                              : member.workload > 6
+                                  ? Colors.orange
+                                  : Colors.green,
                         ),
                       ),
                     ],
@@ -764,7 +841,7 @@ class _TeamMemberCard extends StatelessWidget {
         textColor = Colors.grey.shade700;
         break;
       default:
-        backgroundColor = Theme.of(context).colorScheme.surfaceVariant;
+        backgroundColor = Theme.of(context).colorScheme.surfaceContainerHighest;
         textColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
@@ -788,7 +865,7 @@ class _TeamMemberCard extends StatelessWidget {
 
 class _AddMemberDialog extends StatefulWidget {
   final Function(TeamMember) onMemberAdded;
-  
+
   const _AddMemberDialog({required this.onMemberAdded});
 
   @override
@@ -866,7 +943,8 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                       items: ['developer', 'admin', 'security_reviewer']
                           .map((role) => DropdownMenuItem(
                                 value: role,
-                                child: Text(role.replaceAll('_', ' ').toUpperCase()),
+                                child: Text(
+                                    role.replaceAll('_', ' ').toUpperCase()),
                               ))
                           .toList(),
                       onChanged: (value) {
@@ -932,13 +1010,15 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: _expertise.map((skill) => Chip(
-                    label: Text(skill),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      setState(() => _expertise.remove(skill));
-                    },
-                  )).toList(),
+                  children: _expertise
+                      .map((skill) => Chip(
+                            label: Text(skill),
+                            deleteIcon: const Icon(Icons.close, size: 16),
+                            onDeleted: () {
+                              setState(() => _expertise.remove(skill));
+                            },
+                          ))
+                      .toList(),
                 ),
               ],
             ],
@@ -965,7 +1045,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                 createdAt: DateTime.now(),
                 updatedAt: DateTime.now(),
               );
-              
+
               Navigator.of(context).pop();
               widget.onMemberAdded(member);
             }
@@ -976,11 +1056,12 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
     );
   }
 }
+
 class _JoinRequestCard extends StatelessWidget {
   final JoinRequest request;
   final Function(JoinRequest, String?) onApprove;
   final Function(JoinRequest, String) onReject;
-  
+
   const _JoinRequestCard({
     required this.request,
     required this.onApprove,
@@ -1002,7 +1083,8 @@ class _JoinRequestCard extends StatelessWidget {
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   child: Text(
                     request.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1012,23 +1094,29 @@ class _JoinRequestCard extends StatelessWidget {
                     children: [
                       Text(
                         request.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                       ),
                       Text(
                         request.email,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getRoleColor(request.requestedRole).withValues(alpha: 0.2),
+                    color: _getRoleColor(request.requestedRole)
+                        .withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1043,32 +1131,41 @@ class _JoinRequestCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Request details
             Row(
               children: [
                 Icon(
                   Icons.access_time,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'Requested ${_formatTime(request.createdAt)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
                 ),
               ],
             ),
-            
+
             if (request.message != null && request.message!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -1077,8 +1174,8 @@ class _JoinRequestCard extends StatelessWidget {
                     Text(
                       'Message:',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -1089,9 +1186,9 @@ class _JoinRequestCard extends StatelessWidget {
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 16),
-            
+
             // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -1138,7 +1235,7 @@ class _JoinRequestCard extends StatelessWidget {
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-    
+
     if (difference.inMinutes < 1) {
       return 'just now';
     } else if (difference.inMinutes < 60) {
@@ -1152,7 +1249,7 @@ class _JoinRequestCard extends StatelessWidget {
 
   void _showApproveDialog(BuildContext context) {
     final notesController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1171,13 +1268,14 @@ class _JoinRequestCard extends StatelessWidget {
               Text(
                 'User Details:',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
               const SizedBox(height: 8),
               Text('• Name: ${request.name}'),
               Text('• Email: ${request.email}'),
-              Text('• Requested Role: ${request.requestedRole.replaceAll('_', ' ')}'),
+              Text(
+                  '• Requested Role: ${request.requestedRole.replaceAll('_', ' ')}'),
               const SizedBox(height: 16),
               TextField(
                 controller: notesController,
@@ -1200,14 +1298,15 @@ class _JoinRequestCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.green, size: 20),
+                    const Icon(Icons.info_outline,
+                        color: Colors.green, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'A user account will be created and credentials will be sent via email.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.green.shade700,
-                        ),
+                              color: Colors.green.shade700,
+                            ),
                       ),
                     ),
                   ],
@@ -1224,7 +1323,11 @@ class _JoinRequestCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              onApprove(request, notesController.text.trim().isEmpty ? null : notesController.text.trim());
+              onApprove(
+                  request,
+                  notesController.text.trim().isEmpty
+                      ? null
+                      : notesController.text.trim());
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
@@ -1239,7 +1342,7 @@ class _JoinRequestCard extends StatelessWidget {
 
   void _showRejectDialog(BuildContext context) {
     final reasonController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1259,7 +1362,8 @@ class _JoinRequestCard extends StatelessWidget {
                 controller: reasonController,
                 decoration: const InputDecoration(
                   labelText: 'Rejection Reason *',
-                  hintText: 'e.g., Position not available, insufficient experience...',
+                  hintText:
+                      'e.g., Position not available, insufficient experience...',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -1276,14 +1380,15 @@ class _JoinRequestCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                    const Icon(Icons.info_outline,
+                        color: Colors.orange, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'The user will be notified of the rejection via email.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.orange.shade700,
-                        ),
+                              color: Colors.orange.shade700,
+                            ),
                       ),
                     ),
                   ],

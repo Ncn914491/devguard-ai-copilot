@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:http/http.dart' as http;
-import '../lib/core/gitops/github_service.dart';
-import '../lib/core/database/services/audit_log_service.dart';
+import 'package:devguard_ai_copilot/core/gitops/github_service.dart';
+import 'package:devguard_ai_copilot/core/database/services/audit_log_service.dart';
 
 // Generate mocks
 @GenerateMocks([http.Client, AuditLogService])
@@ -45,10 +45,10 @@ void main() {
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test repository cloning
         final repository = await githubService.cloneRepository();
-        
+
         expect(repository.name, equals('repo'));
         expect(repository.fullName, equals('test/repo'));
         expect(repository.defaultBranch, equals('main'));
@@ -74,7 +74,8 @@ void main() {
       test('should create branch successfully', () async {
         // Mock successful branch creation
         when(mockClient.get(
-          Uri.parse('https://api.github.com/repos/test/repo/git/refs/heads/main'),
+          Uri.parse(
+              'https://api.github.com/repos/test/repo/git/refs/heads/main'),
           headers: anyNamed('headers'),
         )).thenAnswer((_) async => http.Response('''
           {
@@ -100,10 +101,11 @@ void main() {
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test branch creation
-        final branch = await githubService.createBranch('feature-branch', 'main');
-        
+        final branch =
+            await githubService.createBranch('feature-branch', 'main');
+
         expect(branch.name, equals('feature-branch'));
         expect(branch.sha, equals('def456'));
       });
@@ -111,13 +113,14 @@ void main() {
       test('should handle branch creation failure', () async {
         // Mock failed branch creation
         when(mockClient.get(
-          Uri.parse('https://api.github.com/repos/test/repo/git/refs/heads/main'),
+          Uri.parse(
+              'https://api.github.com/repos/test/repo/git/refs/heads/main'),
           headers: anyNamed('headers'),
         )).thenAnswer((_) async => http.Response('Not Found', 404));
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test branch creation failure
         expect(
           () => githubService.createBranch('feature-branch', 'main'),
@@ -146,7 +149,7 @@ void main() {
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test PR creation
         final pr = await githubService.createPullRequest(
           'Test PR',
@@ -154,7 +157,7 @@ void main() {
           'feature-branch',
           'main',
         );
-        
+
         expect(pr.number, equals(1));
         expect(pr.title, equals('Test PR'));
         expect(pr.state, equals('open'));
@@ -183,10 +186,10 @@ void main() {
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test issues fetching
         final issues = await githubService.getRepositoryIssues();
-        
+
         expect(issues.length, equals(1));
         expect(issues.first.number, equals(1));
         expect(issues.first.title, equals('Test Issue'));
@@ -213,14 +216,14 @@ void main() {
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test issue creation
         final issue = await githubService.createIssue(
           'New Issue',
           'New description',
           labels: ['feature'],
         );
-        
+
         expect(issue.number, equals(2));
         expect(issue.title, equals('New Issue'));
         expect(issue.labels, contains('feature'));
@@ -244,10 +247,10 @@ void main() {
 
         // Initialize service
         await githubService.initialize('fake-token', 'test', 'repo');
-        
+
         // Test integration status
         final status = await githubService.getIntegrationStatus();
-        
+
         expect(status.connected, equals(true));
         expect(status.repository, equals('test/repo'));
         expect(status.rateLimitRemaining, equals(4999));
@@ -256,7 +259,7 @@ void main() {
       test('should return disconnected status when not initialized', () async {
         // Test integration status without initialization
         final status = await githubService.getIntegrationStatus();
-        
+
         expect(status.connected, equals(false));
         expect(status.repository, isNull);
         expect(status.rateLimitRemaining, equals(0));

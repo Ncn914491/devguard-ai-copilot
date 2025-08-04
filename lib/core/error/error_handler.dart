@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../database/services/services.dart';
-import '../database/models/models.dart';
 
 /// Comprehensive error handling and recovery system
 /// Satisfies Requirements: 12.1, 12.2, 12.3, 12.4 (Error handling and recovery)
@@ -23,14 +22,15 @@ class ErrorHandler {
     // Set up global error handlers
     FlutterError.onError = _handleFlutterError;
     PlatformDispatcher.instance.onError = _handlePlatformError;
-    
+
     // Initialize recovery actions
     _initializeRecoveryActions();
-    
+
     await _auditService.logAction(
       actionType: 'error_handler_initialized',
       description: 'Error handling system initialized with recovery mechanisms',
-      aiReasoning: 'Comprehensive error handling provides graceful degradation and automatic recovery',
+      aiReasoning:
+          'Comprehensive error handling provides graceful degradation and automatic recovery',
       contextData: {
         'recovery_actions': _recoveryActions.length,
         'platform': Platform.operatingSystem,
@@ -77,7 +77,8 @@ class ErrorHandler {
 
   /// Process and handle application errors
   /// Satisfies Requirements: 12.1 (Graceful error handling)
-  Future<ErrorHandlingResult> handleError(dynamic error, {
+  Future<ErrorHandlingResult> handleError(
+    dynamic error, {
     StackTrace? stackTrace,
     Map<String, dynamic>? context,
     ErrorType? type,
@@ -101,19 +102,19 @@ class ErrorHandler {
     try {
       // Track error frequency
       _trackErrorFrequency(error);
-      
+
       // Log error for audit
       await _logError(error);
-      
+
       // Determine recovery actions
       final recoveryActions = _determineRecoveryActions(error);
-      
+
       // Execute recovery if possible
       final recoveryResult = await _executeRecovery(error, recoveryActions);
-      
+
       // Generate user-friendly message
       final userMessage = _generateUserMessage(error, recoveryResult);
-      
+
       return ErrorHandlingResult(
         error: error,
         handled: true,
@@ -132,7 +133,7 @@ class ErrorHandler {
           'handling_error': handlingError.toString(),
         },
       );
-      
+
       return ErrorHandlingResult(
         error: error,
         handled: false,
@@ -149,7 +150,7 @@ class ErrorHandler {
     final errorKey = '${error.type}_${error.message.hashCode}';
     _errorCounts[errorKey] = (_errorCounts[errorKey] ?? 0) + 1;
     _lastErrorTimes[errorKey] = error.timestamp;
-    
+
     // Check for error patterns
     if (_errorCounts[errorKey]! > 5) {
       _handleRepeatedError(error, _errorCounts[errorKey]!);
@@ -161,14 +162,15 @@ class ErrorHandler {
     await _auditService.logAction(
       actionType: 'repeated_error_detected',
       description: 'Repeated error detected: ${error.message}',
-      aiReasoning: 'Error occurred $count times, may indicate systemic issue requiring intervention',
+      aiReasoning:
+          'Error occurred $count times, may indicate systemic issue requiring intervention',
       contextData: {
         'error_type': error.type.toString(),
         'error_count': count,
         'error_message': error.message,
       },
     );
-    
+
     // Escalate to system health monitoring
     if (count > 10) {
       await _triggerSystemHealthCheck(error);
@@ -206,7 +208,7 @@ class ErrorHandler {
   /// Determine appropriate recovery actions
   List<ErrorRecoveryAction> _determineRecoveryActions(AppError error) {
     final actions = <ErrorRecoveryAction>[];
-    
+
     switch (error.type) {
       case ErrorType.network:
         actions.addAll(_getNetworkRecoveryActions());
@@ -227,24 +229,27 @@ class ErrorHandler {
         actions.addAll(_getSystemRecoveryActions());
         break;
     }
-    
+
     return actions;
   }
 
   /// Execute recovery actions
   /// Satisfies Requirements: 12.3 (Automatic retry logic)
-  Future<RecoveryResult> _executeRecovery(AppError error, List<ErrorRecoveryAction> actions) async {
+  Future<RecoveryResult> _executeRecovery(
+      AppError error, List<ErrorRecoveryAction> actions) async {
     if (actions.isEmpty) {
-      return RecoveryResult(successful: false, message: 'No recovery actions available');
+      return RecoveryResult(
+          successful: false, message: 'No recovery actions available');
     }
-    
+
     for (final action in actions) {
       try {
         final result = await _executeRecoveryAction(action, error);
         if (result.successful) {
           await _auditService.logAction(
             actionType: 'error_recovery_successful',
-            description: 'Successfully recovered from error using: ${action.name}',
+            description:
+                'Successfully recovered from error using: ${action.name}',
             contextData: {
               'error_id': error.id,
               'recovery_action': action.name,
@@ -265,12 +270,14 @@ class ErrorHandler {
         );
       }
     }
-    
-    return RecoveryResult(successful: false, message: 'All recovery actions failed');
+
+    return RecoveryResult(
+        successful: false, message: 'All recovery actions failed');
   }
 
   /// Execute individual recovery action
-  Future<RecoveryResult> _executeRecoveryAction(ErrorRecoveryAction action, AppError error) async {
+  Future<RecoveryResult> _executeRecoveryAction(
+      ErrorRecoveryAction action, AppError error) async {
     switch (action.type) {
       case RecoveryActionType.retry:
         return await _retryOperation(action, error);
@@ -286,13 +293,14 @@ class ErrorHandler {
   }
 
   /// Retry failed operation with exponential backoff
-  Future<RecoveryResult> _retryOperation(ErrorRecoveryAction action, AppError error) async {
+  Future<RecoveryResult> _retryOperation(
+      ErrorRecoveryAction action, AppError error) async {
     const maxRetries = 3;
     const baseDelay = Duration(seconds: 1);
-    
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       await Future.delayed(Duration(seconds: baseDelay.inSeconds * attempt));
-      
+
       try {
         // This would call the original operation that failed
         // For now, simulate success after retries
@@ -311,12 +319,14 @@ class ErrorHandler {
         }
       }
     }
-    
-    return RecoveryResult(successful: false, message: 'Retry attempts exhausted');
+
+    return RecoveryResult(
+        successful: false, message: 'Retry attempts exhausted');
   }
 
   /// Use fallback mechanism
-  Future<RecoveryResult> _useFallback(ErrorRecoveryAction action, AppError error) async {
+  Future<RecoveryResult> _useFallback(
+      ErrorRecoveryAction action, AppError error) async {
     // Implement fallback logic based on error type
     return RecoveryResult(
       successful: true,
@@ -325,7 +335,8 @@ class ErrorHandler {
   }
 
   /// Reset component state
-  Future<RecoveryResult> _resetComponent(ErrorRecoveryAction action, AppError error) async {
+  Future<RecoveryResult> _resetComponent(
+      ErrorRecoveryAction action, AppError error) async {
     // Implement component reset logic
     return RecoveryResult(
       successful: true,
@@ -334,7 +345,8 @@ class ErrorHandler {
   }
 
   /// Reconnect to service
-  Future<RecoveryResult> _reconnectService(ErrorRecoveryAction action, AppError error) async {
+  Future<RecoveryResult> _reconnectService(
+      ErrorRecoveryAction action, AppError error) async {
     // Implement service reconnection logic
     return RecoveryResult(
       successful: true,
@@ -343,7 +355,8 @@ class ErrorHandler {
   }
 
   /// Clear cache
-  Future<RecoveryResult> _clearCache(ErrorRecoveryAction action, AppError error) async {
+  Future<RecoveryResult> _clearCache(
+      ErrorRecoveryAction action, AppError error) async {
     // Implement cache clearing logic
     return RecoveryResult(
       successful: true,
@@ -357,7 +370,7 @@ class ErrorHandler {
     if (recoveryResult.successful) {
       return 'Issue resolved automatically. ${recoveryResult.message}';
     }
-    
+
     switch (error.type) {
       case ErrorType.network:
         return 'Network connection issue. Please check your internet connection and try again.';
@@ -432,7 +445,7 @@ class ErrorHandler {
         description: 'Use cached data when network is unavailable',
         applicableErrorTypes: [ErrorType.network],
       ),
-      
+
       // Database recovery actions
       ErrorRecoveryAction(
         name: 'Database Reconnect',
@@ -446,7 +459,7 @@ class ErrorHandler {
         description: 'Reset database connection pool',
         applicableErrorTypes: [ErrorType.database],
       ),
-      
+
       // UI recovery actions
       ErrorRecoveryAction(
         name: 'UI Refresh',
@@ -465,47 +478,69 @@ class ErrorHandler {
 
   /// Get network-specific recovery actions
   List<ErrorRecoveryAction> _getNetworkRecoveryActions() {
-    return _recoveryActions.where((a) => a.applicableErrorTypes.contains(ErrorType.network)).toList();
+    return _recoveryActions
+        .where((a) => a.applicableErrorTypes.contains(ErrorType.network))
+        .toList();
   }
 
   /// Get database-specific recovery actions
   List<ErrorRecoveryAction> _getDatabaseRecoveryActions() {
-    return _recoveryActions.where((a) => a.applicableErrorTypes.contains(ErrorType.database)).toList();
+    return _recoveryActions
+        .where((a) => a.applicableErrorTypes.contains(ErrorType.database))
+        .toList();
   }
 
   /// Get security-specific recovery actions
   List<ErrorRecoveryAction> _getSecurityRecoveryActions() {
-    return _recoveryActions.where((a) => a.applicableErrorTypes.contains(ErrorType.security)).toList();
+    return _recoveryActions
+        .where((a) => a.applicableErrorTypes.contains(ErrorType.security))
+        .toList();
   }
 
   /// Get integration-specific recovery actions
   List<ErrorRecoveryAction> _getIntegrationRecoveryActions() {
-    return _recoveryActions.where((a) => a.applicableErrorTypes.contains(ErrorType.integration)).toList();
+    return _recoveryActions
+        .where((a) => a.applicableErrorTypes.contains(ErrorType.integration))
+        .toList();
   }
 
   /// Get UI-specific recovery actions
   List<ErrorRecoveryAction> _getUIRecoveryActions() {
-    return _recoveryActions.where((a) => a.applicableErrorTypes.contains(ErrorType.ui)).toList();
+    return _recoveryActions
+        .where((a) => a.applicableErrorTypes.contains(ErrorType.ui))
+        .toList();
   }
 
   /// Get system-specific recovery actions
   List<ErrorRecoveryAction> _getSystemRecoveryActions() {
-    return _recoveryActions.where((a) => a.applicableErrorTypes.contains(ErrorType.system)).toList();
+    return _recoveryActions
+        .where((a) => a.applicableErrorTypes.contains(ErrorType.system))
+        .toList();
   }
 
   /// Infer error type from error object
   ErrorType _inferErrorType(dynamic error) {
     final errorString = error.toString().toLowerCase();
-    
-    if (errorString.contains('network') || errorString.contains('connection') || errorString.contains('timeout')) {
+
+    if (errorString.contains('network') ||
+        errorString.contains('connection') ||
+        errorString.contains('timeout')) {
       return ErrorType.network;
-    } else if (errorString.contains('database') || errorString.contains('sql') || errorString.contains('query')) {
+    } else if (errorString.contains('database') ||
+        errorString.contains('sql') ||
+        errorString.contains('query')) {
       return ErrorType.database;
-    } else if (errorString.contains('security') || errorString.contains('auth') || errorString.contains('permission')) {
+    } else if (errorString.contains('security') ||
+        errorString.contains('auth') ||
+        errorString.contains('permission')) {
       return ErrorType.security;
-    } else if (errorString.contains('api') || errorString.contains('service') || errorString.contains('integration')) {
+    } else if (errorString.contains('api') ||
+        errorString.contains('service') ||
+        errorString.contains('integration')) {
       return ErrorType.integration;
-    } else if (errorString.contains('widget') || errorString.contains('render') || errorString.contains('ui')) {
+    } else if (errorString.contains('widget') ||
+        errorString.contains('render') ||
+        errorString.contains('ui')) {
       return ErrorType.ui;
     } else {
       return ErrorType.system;
@@ -515,12 +550,17 @@ class ErrorHandler {
   /// Infer error severity from error object
   ErrorSeverity _inferErrorSeverity(dynamic error) {
     final errorString = error.toString().toLowerCase();
-    
-    if (errorString.contains('critical') || errorString.contains('fatal') || errorString.contains('security')) {
+
+    if (errorString.contains('critical') ||
+        errorString.contains('fatal') ||
+        errorString.contains('security')) {
       return ErrorSeverity.critical;
-    } else if (errorString.contains('error') || errorString.contains('exception') || errorString.contains('failed')) {
+    } else if (errorString.contains('error') ||
+        errorString.contains('exception') ||
+        errorString.contains('failed')) {
       return ErrorSeverity.high;
-    } else if (errorString.contains('warning') || errorString.contains('timeout')) {
+    } else if (errorString.contains('warning') ||
+        errorString.contains('timeout')) {
       return ErrorSeverity.medium;
     } else {
       return ErrorSeverity.low;
@@ -532,38 +572,39 @@ class ErrorHandler {
   Future<ErrorStatistics> getErrorStatistics() async {
     final now = DateTime.now();
     final last24Hours = now.subtract(const Duration(hours: 24));
-    
+
     int totalErrors = 0;
     int criticalErrors = 0;
     int recentErrors = 0;
-    
+
     for (final entry in _errorCounts.entries) {
       totalErrors += entry.value;
-      
+
       final lastErrorTime = _lastErrorTimes[entry.key];
       if (lastErrorTime != null && lastErrorTime.isAfter(last24Hours)) {
         recentErrors += entry.value;
       }
     }
-    
+
     return ErrorStatistics(
       totalErrors: totalErrors,
       criticalErrors: criticalErrors,
       recentErrors: recentErrors,
       errorTypes: _getErrorTypeDistribution(),
       lastError: _getLastErrorTime(),
-      systemHealth: _calculateSystemHealth(totalErrors, criticalErrors, recentErrors),
+      systemHealth:
+          _calculateSystemHealth(totalErrors, criticalErrors, recentErrors),
     );
   }
 
   /// Get error type distribution
   Map<ErrorType, int> _getErrorTypeDistribution() {
     final distribution = <ErrorType, int>{};
-    
+
     for (final type in ErrorType.values) {
       distribution[type] = 0;
     }
-    
+
     // This would be populated from actual error tracking
     return distribution;
   }
@@ -571,12 +612,13 @@ class ErrorHandler {
   /// Get last error time
   DateTime? _getLastErrorTime() {
     if (_lastErrorTimes.isEmpty) return null;
-    
+
     return _lastErrorTimes.values.reduce((a, b) => a.isAfter(b) ? a : b);
   }
 
   /// Calculate system health score
-  SystemHealth _calculateSystemHealth(int totalErrors, int criticalErrors, int recentErrors) {
+  SystemHealth _calculateSystemHealth(
+      int totalErrors, int criticalErrors, int recentErrors) {
     if (criticalErrors > 0 || recentErrors > 10) {
       return SystemHealth.critical;
     } else if (recentErrors > 5 || totalErrors > 50) {

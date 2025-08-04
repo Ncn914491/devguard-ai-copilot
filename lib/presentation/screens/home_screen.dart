@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _teamMemberService = TeamMemberService.instance;
   final _taskService = TaskService.instance;
   final _gitIntegration = GitIntegration.instance;
-  
+
   SecurityStatus? _securityStatus;
   List<Deployment> _recentDeployments = [];
   List<Specification> _recentSpecs = [];
@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
       // Load all dashboard data in parallel
       final results = await Future.wait([
@@ -51,14 +51,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _taskService.getAllTasks(),
         _gitIntegration.getIntegrationStatus(),
       ]);
-      
+
       setState(() {
         _securityStatus = results[0] as SecurityStatus;
         _recentDeployments = results[1] as List<Deployment>;
         _recentSpecs = (results[2] as List<Specification>).take(5).toList();
         _teamMembers = results[3] as List<TeamMember>;
-        _activeTasks = (results[4] as List<Task>).where((t) => 
-          t.status == 'in_progress' || t.status == 'review').take(5).toList();
+        _activeTasks = (results[4] as List<Task>)
+            .where((t) => t.status == 'in_progress' || t.status == 'review')
+            .take(5)
+            .toList();
         _gitStatus = results[5] as GitIntegrationStatus;
         _isLoading = false;
       });
@@ -85,19 +87,19 @@ class _HomeScreenState extends State<HomeScreen> {
               // Header
               _buildHeader(context),
               const SizedBox(height: 32),
-              
+
               // Error State
               if (_error != null) _buildErrorState(context),
-              
+
               // Loading State
               if (_isLoading) _buildLoadingState(),
-              
+
               // Dashboard Content
               if (!_isLoading && _error == null) ...[
                 // Overview Cards
                 _buildOverviewCards(context),
                 const SizedBox(height: 32),
-                
+
                 // Main Dashboard Grid
                 _buildDashboardGrid(context),
               ],
@@ -119,16 +121,19 @@ class _HomeScreenState extends State<HomeScreen> {
               'DevGuard AI Copilot Dashboard',
               key: const Key('app_title'),
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Real-time overview of your development workflow and security status',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.7),
+                  ),
             ),
           ],
         ),
@@ -161,9 +166,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     _getSystemStatusText(),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _getSystemStatusColor(),
-                      fontWeight: FontWeight.w500,
-                    ),
+                          color: _getSystemStatusColor(),
+                          fontWeight: FontWeight.w500,
+                        ),
                   ),
                 ],
               ),
@@ -196,16 +201,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Failed to load dashboard data',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.error,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             _error!,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onErrorContainer,
-            ),
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -238,17 +243,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 800;
-        final cardCount = 4;
-        
+        const cardCount = 4;
+
         if (isCompact) {
           // Stack cards vertically on small screens
           return Column(
-            children: _buildOverviewCardsList().map((card) => 
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: card,
-              )
-            ).toList(),
+            children: _buildOverviewCardsList()
+                .map((card) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: card,
+                    ))
+                .toList(),
           );
         } else {
           // Horizontal layout for larger screens
@@ -271,18 +276,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Widget> _buildOverviewCardsList() {
-    final activeDeployments = _recentDeployments.where((d) => d.status == 'in_progress').length;
-    final successfulDeployments = _recentDeployments.where((d) => d.status == 'success').length;
-    final activeMembers = _teamMembers.where((m) => m.status == 'active').length;
+    final activeDeployments =
+        _recentDeployments.where((d) => d.status == 'in_progress').length;
+    final successfulDeployments =
+        _recentDeployments.where((d) => d.status == 'success').length;
+    final activeMembers =
+        _teamMembers.where((m) => m.status == 'active').length;
     final benchMembers = _teamMembers.where((m) => m.status == 'bench').length;
-    final approvedSpecs = _recentSpecs.where((s) => s.status == 'approved').length;
+    final approvedSpecs =
+        _recentSpecs.where((s) => s.status == 'approved').length;
     final pendingSpecs = _recentSpecs.where((s) => s.status == 'draft').length;
-    
+
     return [
       _OverviewCard(
         title: 'Active Deployments',
         value: '${_recentDeployments.length}',
-        subtitle: '$successfulDeployments successful, $activeDeployments active',
+        subtitle:
+            '$successfulDeployments successful, $activeDeployments active',
         color: Colors.blue,
         icon: Icons.rocket_launch_outlined,
         onTap: () => _navigateToScreen('deployments'),
@@ -290,8 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _OverviewCard(
         title: 'Security Alerts',
         value: '${_securityStatus?.activeAlerts ?? 0}',
-        subtitle: _securityStatus?.criticalAlerts == 0 
-            ? 'All systems secure' 
+        subtitle: _securityStatus?.criticalAlerts == 0
+            ? 'All systems secure'
             : '${_securityStatus?.criticalAlerts} critical alerts',
         color: _securityStatus?.criticalAlerts == 0 ? Colors.green : Colors.red,
         icon: Icons.shield_outlined,
@@ -320,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 1200;
-        
+
         if (isCompact) {
           // Single column layout for smaller screens
           return Column(
@@ -381,8 +391,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Recent Activity',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 TextButton(
                   onPressed: () => _navigateToScreen('audit'),
@@ -397,7 +407,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? _buildEmptyState('No recent activity', Icons.timeline)
                   : ListView.separated(
                       itemCount: _recentSpecs.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final spec = _recentSpecs[index];
                         return _buildActivityItem(
@@ -430,8 +441,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Security Status',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 Icon(
                   Icons.security,
@@ -445,14 +456,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 'Active Alerts',
                 '${_securityStatus!.activeAlerts}',
-                _securityStatus!.activeAlerts == 0 ? Colors.green : Colors.orange,
+                _securityStatus!.activeAlerts == 0
+                    ? Colors.green
+                    : Colors.orange,
               ),
               const SizedBox(height: 12),
               _buildSecurityMetric(
                 context,
                 'Critical Alerts',
                 '${_securityStatus!.criticalAlerts}',
-                _securityStatus!.criticalAlerts == 0 ? Colors.green : Colors.red,
+                _securityStatus!.criticalAlerts == 0
+                    ? Colors.green
+                    : Colors.red,
               ),
               const SizedBox(height: 12),
               _buildSecurityMetric(
@@ -465,20 +480,26 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   Icon(
-                    _securityStatus!.systemSecure ? Icons.check_circle : Icons.warning,
-                    color: _securityStatus!.systemSecure ? Colors.green : Colors.orange,
+                    _securityStatus!.systemSecure
+                        ? Icons.check_circle
+                        : Icons.warning,
+                    color: _securityStatus!.systemSecure
+                        ? Colors.green
+                        : Colors.orange,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _securityStatus!.systemSecure 
-                          ? 'All systems secure' 
+                      _securityStatus!.systemSecure
+                          ? 'All systems secure'
                           : 'Security issues detected',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _securityStatus!.systemSecure ? Colors.green : Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
+                            color: _securityStatus!.systemSecure
+                                ? Colors.green
+                                : Colors.orange,
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
                   ),
                 ],
@@ -504,8 +525,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Git Integration',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 Icon(
                   Icons.source,
@@ -554,9 +575,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     _gitStatus!.connected ? 'Connected' : 'Disconnected',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: _gitStatus!.connected ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.w500,
-                    ),
+                          color:
+                              _gitStatus!.connected ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.w500,
+                        ),
                   ),
                 ],
               ),
@@ -581,8 +603,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Active Tasks',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 TextButton(
                   onPressed: () => _navigateToScreen('workflow'),
@@ -597,7 +619,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? _buildEmptyState('No active tasks', Icons.task)
                   : ListView.separated(
                       itemCount: _activeTasks.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final task = _activeTasks[index];
                         return _buildTaskItem(context, task);
@@ -632,8 +655,8 @@ class _HomeScreenState extends State<HomeScreen> {
       title: Text(
         title,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
+              fontWeight: FontWeight.w500,
+            ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -646,8 +669,11 @@ class _HomeScreenState extends State<HomeScreen> {
       trailing: Text(
         time,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
+            ),
       ),
     );
   }
@@ -667,8 +693,8 @@ class _HomeScreenState extends State<HomeScreen> {
       title: Text(
         task.title,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
+              fontWeight: FontWeight.w500,
+            ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -685,9 +711,9 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Text(
           task.status.replaceAll('_', ' '),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: _getStatusColor(task.status),
-            fontWeight: FontWeight.w500,
-          ),
+                color: _getStatusColor(task.status),
+                fontWeight: FontWeight.w500,
+              ),
         ),
       ),
     );
@@ -715,9 +741,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Text(
             value,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
         ),
       ],
@@ -741,16 +767,19 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           '$label:',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+              ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             value,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+                  fontWeight: FontWeight.w500,
+                ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -766,14 +795,18 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             icon,
             size: 48,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                ),
           ),
         ],
       ),
@@ -782,30 +815,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Helper methods
   Color _getSystemStatusColor() {
-    if (_securityStatus?.criticalAlerts != null && _securityStatus!.criticalAlerts > 0) {
+    if (_securityStatus?.criticalAlerts != null &&
+        _securityStatus!.criticalAlerts > 0) {
       return Colors.red;
     }
-    if (_securityStatus?.activeAlerts != null && _securityStatus!.activeAlerts > 0) {
+    if (_securityStatus?.activeAlerts != null &&
+        _securityStatus!.activeAlerts > 0) {
       return Colors.orange;
     }
     return Colors.green;
   }
 
   IconData _getSystemStatusIcon() {
-    if (_securityStatus?.criticalAlerts != null && _securityStatus!.criticalAlerts > 0) {
+    if (_securityStatus?.criticalAlerts != null &&
+        _securityStatus!.criticalAlerts > 0) {
       return Icons.error;
     }
-    if (_securityStatus?.activeAlerts != null && _securityStatus!.activeAlerts > 0) {
+    if (_securityStatus?.activeAlerts != null &&
+        _securityStatus!.activeAlerts > 0) {
       return Icons.warning;
     }
     return Icons.check_circle;
   }
 
   String _getSystemStatusText() {
-    if (_securityStatus?.criticalAlerts != null && _securityStatus!.criticalAlerts > 0) {
+    if (_securityStatus?.criticalAlerts != null &&
+        _securityStatus!.criticalAlerts > 0) {
       return 'Critical Issues';
     }
-    if (_securityStatus?.activeAlerts != null && _securityStatus!.activeAlerts > 0) {
+    if (_securityStatus?.activeAlerts != null &&
+        _securityStatus!.activeAlerts > 0) {
       return 'Warnings';
     }
     return 'All Systems Operational';
@@ -886,7 +925,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {
@@ -912,7 +951,7 @@ class _OverviewCard extends StatelessWidget {
   final Color color;
   final IconData icon;
   final VoidCallback? onTap;
-  
+
   const _OverviewCard({
     required this.title,
     required this.value,
@@ -953,8 +992,8 @@ class _OverviewCard extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                            fontWeight: FontWeight.w500,
+                          ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -964,16 +1003,19 @@ class _OverviewCard extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                    ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

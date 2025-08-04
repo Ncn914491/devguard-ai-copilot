@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/ai/gemini_service.dart';
 import '../../core/ai/copilot_service.dart';
 
 class CopilotSidebar extends StatefulWidget {
@@ -32,11 +31,11 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
     _messages.add(
       ChatMessage(
         text: 'Hello! I\'m your DevGuard AI Copilot. I can help you with:\n\n'
-              '• Explaining security alerts\n'
-              '• Summarizing recent activity\n'
-              '• Managing deployments and rollbacks\n'
-              '• Team assignments\n\n'
-              'Try commands like /rollback, /assign, or /summarize, or just ask me anything!',
+            '• Explaining security alerts\n'
+            '• Summarizing recent activity\n'
+            '• Managing deployments and rollbacks\n'
+            '• Team assignments\n\n'
+            'Try commands like /rollback, /assign, or /summarize, or just ask me anything!',
         isUser: false,
         timestamp: DateTime.now(),
       ),
@@ -114,7 +113,8 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
         icon: Icon(icon, size: 20),
         tooltip: tooltip,
         style: IconButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          backgroundColor:
+              Theme.of(context).colorScheme.surfaceContainerHighest,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -132,7 +132,10 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                color: Theme.of(context)
+                    .colorScheme
+                    .outline
+                    .withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -165,14 +168,14 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
                     Text(
                       'AI Copilot',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     Text(
                       'Online',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.green,
-                      ),
+                            color: Colors.green,
+                          ),
                     ),
                   ],
                 ),
@@ -195,9 +198,12 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
               Text(
                 'Quick Commands',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
+                    ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -243,8 +249,11 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
                 Text(
                   'AI is thinking...',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
                 ),
               ],
             ),
@@ -256,7 +265,10 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                color: Theme.of(context)
+                    .colorScheme
+                    .outline
+                    .withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -269,12 +281,18 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
                   decoration: InputDecoration(
                     hintText: 'Ask me anything or use /commands...',
                     hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.6),
+                        ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                       borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.3),
                       ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -309,8 +327,8 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
       label: Text(
         command,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontFamily: 'monospace',
-        ),
+              fontFamily: 'monospace',
+            ),
       ),
       onPressed: () => _sendMessage(command),
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -360,19 +378,25 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
                   Text(
                     message.text,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: message.isUser
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurface,
-                    ),
+                          color: message.isUser
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _formatTime(message.timestamp),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: message.isUser
-                          ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7)
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                          color: message.isUser
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .onPrimary
+                                  .withValues(alpha: 0.7)
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
+                        ),
                   ),
                   // Show approval buttons if required
                   if (message.requiresApproval && !message.isUser) ...[
@@ -386,7 +410,8 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             minimumSize: Size.zero,
                           ),
                         ),
@@ -398,7 +423,8 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
                             side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             minimumSize: Size.zero,
                           ),
                         ),
@@ -413,7 +439,8 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
             const SizedBox(width: 8),
             CircleAvatar(
               radius: 12,
-              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              backgroundColor:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
               child: Icon(
                 Icons.person,
                 size: 14,
@@ -475,8 +502,8 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
         _messages.add(
           ChatMessage(
             text: 'Sorry, I encountered an error: $e\n\n'
-                  'I\'m running in fallback mode. I can still help with basic commands '
-                  'like /rollback, /assign, and /summarize.',
+                'I\'m running in fallback mode. I can still help with basic commands '
+                'like /rollback, /assign, and /summarize.',
             isUser: false,
             timestamp: DateTime.now(),
           ),
@@ -487,8 +514,6 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
 
     _scrollToBottom();
   }
-
-
 
   void _handleApproval(ChatMessage message, bool approved) async {
     if (message.actionData == null) return;
@@ -552,7 +577,7 @@ class _CopilotSidebarState extends State<CopilotSidebar> {
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {

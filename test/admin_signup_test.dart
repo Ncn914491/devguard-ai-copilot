@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/core/services/project_service.dart';
-import '../lib/core/auth/auth_service.dart';
-import '../lib/core/database/services/audit_log_service.dart';
+import 'package:devguard_ai_copilot/core/services/project_service.dart';
+import 'package:devguard_ai_copilot/core/auth/auth_service.dart';
+import 'package:devguard_ai_copilot/core/database/services/audit_log_service.dart';
 
 void main() {
   group('Admin Signup and Project Creation', () {
@@ -13,7 +13,7 @@ void main() {
       projectService = ProjectService.instance;
       authService = AuthService.instance;
       auditService = AuditLogService.instance;
-      
+
       // Initialize services
       await projectService.initialize();
       await authService.initialize();

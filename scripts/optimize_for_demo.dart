@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
 import '../demo/demo_data_generator.dart';
-import '../lib/core/database/services/services.dart';
-import '../lib/core/security/security_monitor.dart';
-import '../lib/core/error/error_handler.dart';
-import '../lib/core/monitoring/system_health_monitor.dart';
+import 'package:devguard_ai_copilot/core/database/services/services.dart';
+import 'package:devguard_ai_copilot/core/security/security_monitor.dart';
+import 'package:devguard_ai_copilot/core/error/error_handler.dart';
+import 'package:devguard_ai_copilot/core/monitoring/system_health_monitor.dart';
 
 /// Demo optimization script for DevGuard AI Copilot
 /// Satisfies Requirements: 14.3 (Performance optimizations for demo)
@@ -16,14 +16,14 @@ class DemoOptimizer {
   /// Optimize application for demo performance
   Future<void> optimizeForDemo() async {
     print('🚀 Optimizing DevGuard AI Copilot for demo...');
-    
+
     await _initializeServices();
     await _generateDemoData();
     await _optimizeDatabase();
     await _preloadCaches();
     await _configureForDemo();
     await _runHealthChecks();
-    
+
     print('✅ Demo optimization completed successfully!');
     print('🎭 Application is ready for demonstration');
   }
@@ -31,23 +31,22 @@ class DemoOptimizer {
   /// Initialize all core services
   Future<void> _initializeServices() async {
     print('🔧 Initializing core services...');
-    
+
     try {
       // Initialize error handler first
       await ErrorHandler.instance.initialize();
       print('  ✅ Error handler initialized');
-      
+
       // Initialize security monitoring
       await SecurityMonitor.instance.initialize();
       print('  ✅ Security monitoring initialized');
-      
+
       // Initialize system health monitoring
       await SystemHealthMonitor.instance.initialize();
       print('  ✅ System health monitoring initialized');
-      
+
       // Wait for services to stabilize
       await Future.delayed(const Duration(seconds: 2));
-      
     } catch (e) {
       print('  ❌ Service initialization failed: $e');
       rethrow;
@@ -57,21 +56,20 @@ class DemoOptimizer {
   /// Generate comprehensive demo data
   Future<void> _generateDemoData() async {
     print('📊 Generating demo data...');
-    
+
     try {
       final generator = DemoDataGenerator.instance;
-      
+
       // Clear existing data first
       await generator.clearDemoData();
-      
+
       // Generate fresh demo data
       await generator.generateDemoData();
-      
+
       // Generate additional demo-specific data
       await generator.generateDemoSnapshots();
-      
+
       print('  ✅ Demo data generated successfully');
-      
     } catch (e) {
       print('  ❌ Demo data generation failed: $e');
       rethrow;
@@ -81,13 +79,12 @@ class DemoOptimizer {
   /// Optimize database for demo performance
   Future<void> _optimizeDatabase() async {
     print('🗄️ Optimizing database performance...');
-    
+
     try {
       // This would run database optimization queries
       // For SQLite, we can run VACUUM and ANALYZE
-      
+
       print('  ✅ Database optimization completed');
-      
     } catch (e) {
       print('  ❌ Database optimization failed: $e');
       // Don't rethrow - this is not critical for demo
@@ -97,32 +94,31 @@ class DemoOptimizer {
   /// Preload caches for better demo performance
   Future<void> _preloadCaches() async {
     print('💾 Preloading caches...');
-    
+
     try {
       // Preload team members
       await TeamMemberService.instance.getAllTeamMembers();
       print('  ✅ Team members cache preloaded');
-      
+
       // Preload specifications
       await SpecService.instance.getAllSpecifications();
       print('  ✅ Specifications cache preloaded');
-      
+
       // Preload tasks
       await TaskService.instance.getAllTasks();
       print('  ✅ Tasks cache preloaded');
-      
+
       // Preload deployments
       await DeploymentService.instance.getAllDeployments();
       print('  ✅ Deployments cache preloaded');
-      
+
       // Preload security alerts
       await SecurityAlertService.instance.getAllSecurityAlerts();
       print('  ✅ Security alerts cache preloaded');
-      
+
       // Preload audit logs (recent ones)
       await AuditLogService.instance.getAllAuditLogs(limit: 100);
       print('  ✅ Audit logs cache preloaded');
-      
     } catch (e) {
       print('  ❌ Cache preloading failed: $e');
       // Don't rethrow - this is not critical for demo
@@ -132,7 +128,7 @@ class DemoOptimizer {
   /// Configure application for optimal demo experience
   Future<void> _configureForDemo() async {
     print('⚙️ Configuring for demo...');
-    
+
     try {
       // Create demo configuration
       final demoConfig = {
@@ -144,22 +140,21 @@ class DemoOptimizer {
         'log_level': 'info',
         'performance_monitoring': true,
       };
-      
+
       // Write demo configuration file
       final configFile = File('config/demo.json');
       await configFile.parent.create(recursive: true);
       await configFile.writeAsString(
         const JsonEncoder.withIndent('  ').convert(demoConfig),
       );
-      
+
       print('  ✅ Demo configuration created');
-      
+
       // Set environment variables for demo
       Platform.environment['DEMO_MODE'] = 'true';
       Platform.environment['LOG_LEVEL'] = 'info';
-      
+
       print('  ✅ Environment configured for demo');
-      
     } catch (e) {
       print('  ❌ Demo configuration failed: $e');
       // Don't rethrow - this is not critical for demo
@@ -169,12 +164,13 @@ class DemoOptimizer {
   /// Run comprehensive health checks
   Future<void> _runHealthChecks() async {
     print('🏥 Running health checks...');
-    
+
     try {
       // Check system health
-      final healthStatus = await SystemHealthMonitor.instance.getCurrentHealthStatus();
+      final healthStatus =
+          await SystemHealthMonitor.instance.getCurrentHealthStatus();
       print('  📊 System health: ${healthStatus.status}');
-      
+
       if (healthStatus.status == HealthStatus.critical) {
         print('  ⚠️ Warning: System health is critical');
         print('  📋 Issues found:');
@@ -184,20 +180,20 @@ class DemoOptimizer {
           }
         }
       }
-      
+
       // Check security monitoring
       final securityStatus = await SecurityMonitor.instance.getSecurityStatus();
-      print('  🛡️ Security monitoring: ${securityStatus.isMonitoring ? 'Active' : 'Inactive'}');
+      print(
+          '  🛡️ Security monitoring: ${securityStatus.isMonitoring ? 'Active' : 'Inactive'}');
       print('  🍯 Honeytokens deployed: ${securityStatus.honeytokensDeployed}');
       print('  🚨 Active alerts: ${securityStatus.activeAlerts}');
-      
+
       // Check error handler
       final errorStats = await ErrorHandler.instance.getErrorStatistics();
       print('  🐛 Recent errors: ${errorStats.recentErrors}');
       print('  💊 System health score: ${_calculateHealthScore(errorStats)}');
-      
+
       print('  ✅ Health checks completed');
-      
     } catch (e) {
       print('  ❌ Health checks failed: $e');
       // Don't rethrow - we want to continue even if health checks fail
@@ -215,7 +211,7 @@ class DemoOptimizer {
   /// Verify demo readiness
   Future<bool> verifyDemoReadiness() async {
     print('🔍 Verifying demo readiness...');
-    
+
     try {
       // Check if demo data exists
       final teamMembers = await TeamMemberService.instance.getAllTeamMembers();
@@ -223,29 +219,29 @@ class DemoOptimizer {
         print('  ❌ No team members found');
         return false;
       }
-      
+
       final specifications = await SpecService.instance.getAllSpecifications();
       if (specifications.isEmpty) {
         print('  ❌ No specifications found');
         return false;
       }
-      
-      final securityAlerts = await SecurityAlertService.instance.getAllSecurityAlerts();
+
+      final securityAlerts =
+          await SecurityAlertService.instance.getAllSecurityAlerts();
       if (securityAlerts.isEmpty) {
         print('  ❌ No security alerts found');
         return false;
       }
-      
+
       // Check if services are running
       final securityStatus = await SecurityMonitor.instance.getSecurityStatus();
       if (!securityStatus.isMonitoring) {
         print('  ❌ Security monitoring not active');
         return false;
       }
-      
+
       print('  ✅ Demo readiness verified');
       return true;
-      
     } catch (e) {
       print('  ❌ Demo readiness check failed: $e');
       return false;
@@ -255,28 +251,31 @@ class DemoOptimizer {
   /// Generate demo performance report
   Future<void> generatePerformanceReport() async {
     print('📈 Generating performance report...');
-    
+
     try {
       final report = StringBuffer();
       report.writeln('DevGuard AI Copilot - Demo Performance Report');
       report.writeln('=' * 50);
       report.writeln('Generated: ${DateTime.now()}');
       report.writeln();
-      
+
       // System health
-      final healthStatus = await SystemHealthMonitor.instance.getCurrentHealthStatus();
+      final healthStatus =
+          await SystemHealthMonitor.instance.getCurrentHealthStatus();
       report.writeln('System Health: ${healthStatus.status}');
       report.writeln('Health Summary: ${healthStatus.summary}');
       report.writeln();
-      
+
       // Data statistics
       final teamMembers = await TeamMemberService.instance.getAllTeamMembers();
       final specifications = await SpecService.instance.getAllSpecifications();
       final tasks = await TaskService.instance.getAllTasks();
       final deployments = await DeploymentService.instance.getAllDeployments();
-      final securityAlerts = await SecurityAlertService.instance.getAllSecurityAlerts();
-      final auditLogs = await AuditLogService.instance.getAllAuditLogs(limit: 1000);
-      
+      final securityAlerts =
+          await SecurityAlertService.instance.getAllSecurityAlerts();
+      final auditLogs =
+          await AuditLogService.instance.getAllAuditLogs(limit: 1000);
+
       report.writeln('Data Statistics:');
       report.writeln('- Team Members: ${teamMembers.length}');
       report.writeln('- Specifications: ${specifications.length}');
@@ -285,16 +284,17 @@ class DemoOptimizer {
       report.writeln('- Security Alerts: ${securityAlerts.length}');
       report.writeln('- Audit Logs: ${auditLogs.length}');
       report.writeln();
-      
+
       // Security status
       final securityStatus = await SecurityMonitor.instance.getSecurityStatus();
       report.writeln('Security Status:');
       report.writeln('- Monitoring Active: ${securityStatus.isMonitoring}');
-      report.writeln('- Honeytokens Deployed: ${securityStatus.honeytokensDeployed}');
+      report.writeln(
+          '- Honeytokens Deployed: ${securityStatus.honeytokensDeployed}');
       report.writeln('- Active Alerts: ${securityStatus.activeAlerts}');
       report.writeln('- Critical Alerts: ${securityStatus.criticalAlerts}');
       report.writeln();
-      
+
       // Error statistics
       final errorStats = await ErrorHandler.instance.getErrorStatistics();
       report.writeln('Error Statistics:');
@@ -303,21 +303,20 @@ class DemoOptimizer {
       report.writeln('- Recent Errors: ${errorStats.recentErrors}');
       report.writeln('- System Health: ${errorStats.systemHealth}');
       report.writeln();
-      
+
       // Performance metrics
       report.writeln('Performance Metrics:');
       report.writeln('- Memory Usage: Optimized');
       report.writeln('- Cache Status: Preloaded');
       report.writeln('- Database: Optimized');
       report.writeln('- Demo Mode: Enabled');
-      
+
       // Write report to file
       final reportFile = File('demo/performance_report.txt');
       await reportFile.parent.create(recursive: true);
       await reportFile.writeAsString(report.toString());
-      
+
       print('  ✅ Performance report generated: demo/performance_report.txt');
-      
     } catch (e) {
       print('  ❌ Performance report generation failed: $e');
     }
@@ -326,24 +325,23 @@ class DemoOptimizer {
   /// Clean up after demo
   Future<void> cleanupAfterDemo() async {
     print('🧹 Cleaning up after demo...');
-    
+
     try {
       // Stop monitoring services
       SecurityMonitor.instance.stop();
       SystemHealthMonitor.instance.stop();
-      
+
       // Clear demo configuration
       final configFile = File('config/demo.json');
       if (await configFile.exists()) {
         await configFile.delete();
       }
-      
+
       // Reset environment variables
       Platform.environment.remove('DEMO_MODE');
       Platform.environment.remove('LOG_LEVEL');
-      
+
       print('  ✅ Demo cleanup completed');
-      
     } catch (e) {
       print('  ❌ Demo cleanup failed: $e');
     }
@@ -352,7 +350,7 @@ class DemoOptimizer {
   /// Create demo shortcuts and helpers
   Future<void> createDemoShortcuts() async {
     print('⌨️ Creating demo shortcuts...');
-    
+
     try {
       final shortcuts = {
         'demo_commands': {
@@ -380,15 +378,14 @@ class DemoOptimizer {
           'Demo mode enables additional tooltips and help',
         ],
       };
-      
+
       final shortcutsFile = File('demo/shortcuts.json');
       await shortcutsFile.parent.create(recursive: true);
       await shortcutsFile.writeAsString(
         const JsonEncoder.withIndent('  ').convert(shortcuts),
       );
-      
+
       print('  ✅ Demo shortcuts created: demo/shortcuts.json');
-      
     } catch (e) {
       print('  ❌ Demo shortcuts creation failed: $e');
     }
@@ -398,7 +395,7 @@ class DemoOptimizer {
 /// Main function to run demo optimization
 Future<void> main(List<String> args) async {
   final optimizer = DemoOptimizer.instance;
-  
+
   try {
     if (args.contains('--verify-only')) {
       // Only verify demo readiness
@@ -415,21 +412,20 @@ Future<void> main(List<String> args) async {
       await optimizer.optimizeForDemo();
       await optimizer.createDemoShortcuts();
       await optimizer.generatePerformanceReport();
-      
+
       // Verify everything is ready
       final isReady = await optimizer.verifyDemoReadiness();
       if (!isReady) {
         print('⚠️ Warning: Demo readiness verification failed');
         exit(1);
       }
-      
+
       print('');
       print('🎉 DevGuard AI Copilot is ready for demonstration!');
       print('📖 See demo/DEMO_GUIDE.md for presentation instructions');
       print('⌨️ See demo/shortcuts.json for demo shortcuts');
       print('📊 See demo/performance_report.txt for system status');
     }
-    
   } catch (e) {
     print('❌ Demo optimization failed: $e');
     exit(1);

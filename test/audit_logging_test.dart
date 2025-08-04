@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import '../lib/core/database/services/services.dart';
-import '../lib/core/database/database_service.dart';
-import '../lib/core/database/models/models.dart';
-import '../lib/core/security/security_monitor.dart';
-import '../lib/core/ai/copilot_service.dart';
+import 'package:devguard_ai_copilot/core/database/services/services.dart';
+import 'package:devguard_ai_copilot/core/database/database_service.dart';
+import 'package:devguard_ai_copilot/core/database/models/models.dart';
+import 'package:devguard_ai_copilot/core/security/security_monitor.dart';
+import 'package:devguard_ai_copilot/core/ai/copilot_service.dart';
 
 void main() {
   group('Audit Logging Tests', () {
@@ -17,11 +17,11 @@ void main() {
       // Initialize FFI
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
-      
+
       // Initialize database service
       databaseService = DatabaseService.instance;
       await databaseService.initialize(':memory:');
-      
+
       auditService = AuditLogService.instance;
       securityMonitor = SecurityMonitor.instance;
       copilotService = CopilotService.instance;
@@ -37,10 +37,15 @@ void main() {
       await auditService.logAction(
         actionType: 'specification_processed',
         description: 'AI processed natural language specification',
-        aiReasoning: 'Parsed user input "Create a login form" into structured tasks including form validation, authentication logic, and UI components',
+        aiReasoning:
+            'Parsed user input "Create a login form" into structured tasks including form validation, authentication logic, and UI components',
         contextData: {
           'original_spec': 'Create a login form',
-          'generated_tasks': ['Create form UI', 'Add validation', 'Implement auth'],
+          'generated_tasks': [
+            'Create form UI',
+            'Add validation',
+            'Implement auth'
+          ],
           'confidence_score': 0.95,
         },
         userId: 'ai_system',
@@ -50,7 +55,8 @@ void main() {
       await auditService.logAction(
         actionType: 'security_alert_created',
         description: 'AI generated security alert for honeytoken access',
-        aiReasoning: 'Detected access to honeytoken credit card number 4111-1111-1111-1111 in database query, indicating potential data breach attempt',
+        aiReasoning:
+            'Detected access to honeytoken credit card number 4111-1111-1111-1111 in database query, indicating potential data breach attempt',
         contextData: {
           'alert_type': 'database_breach',
           'severity': 'critical',
@@ -79,7 +85,8 @@ void main() {
       await auditService.logAction(
         actionType: 'code_generated',
         description: 'AI generated login form component',
-        aiReasoning: 'Generated React component based on user specification with form validation and accessibility features',
+        aiReasoning:
+            'Generated React component based on user specification with form validation and accessibility features',
         contextData: {
           'file_path': 'src/components/LoginForm.tsx',
           'lines_added': 45,
@@ -106,11 +113,12 @@ void main() {
 
       // Verify version control tracking
       final logs = await auditService.getAllAuditLogs();
-      final versionControlLogs = logs.where((log) => 
-        log.contextData != null && 
-        (log.contextData!.containsKey('git_commit') || 
-         log.contextData!.containsKey('previous_hash'))
-      ).toList();
+      final versionControlLogs = logs
+          .where((log) =>
+              log.contextData != null &&
+              (log.contextData!.containsKey('git_commit') ||
+                  log.contextData!.containsKey('previous_hash')))
+          .toList();
 
       expect(versionControlLogs.length, greaterThanOrEqualTo(2));
 
@@ -119,19 +127,20 @@ void main() {
         expect(log.timestamp, isNotNull);
         // Verify either git commit or hash tracking
         expect(
-          log.contextData!.containsKey('git_commit') || 
-          log.contextData!.containsKey('previous_hash'),
-          isTrue
-        );
+            log.contextData!.containsKey('git_commit') ||
+                log.contextData!.containsKey('previous_hash'),
+            isTrue);
       }
     });
 
-    test('should require and record human approval for critical actions', () async {
+    test('should require and record human approval for critical actions',
+        () async {
       // Log critical action requiring approval
       await auditService.logAction(
         actionType: 'deployment_requested',
         description: 'AI requested production deployment',
-        aiReasoning: 'All tests passed and security scans completed successfully. Deployment to production is recommended.',
+        aiReasoning:
+            'All tests passed and security scans completed successfully. Deployment to production is recommended.',
         contextData: {
           'environment': 'production',
           'version': '1.2.3',
@@ -146,9 +155,8 @@ void main() {
       final pendingApprovals = await auditService.getLogsRequiringApproval();
       expect(pendingApprovals.isNotEmpty, isTrue);
 
-      final deploymentRequest = pendingApprovals.firstWhere(
-        (log) => log.actionType == 'deployment_requested'
-      );
+      final deploymentRequest = pendingApprovals
+          .firstWhere((log) => log.actionType == 'deployment_requested');
       expect(deploymentRequest.requiresApproval, isTrue);
       expect(deploymentRequest.approved, isFalse);
       expect(deploymentRequest.approvedBy, isNull);
@@ -246,7 +254,10 @@ void main() {
       // Test filtering by pending approvals
       final pendingApprovals = await auditService.getLogsRequiringApproval();
       expect(pendingApprovals.isNotEmpty, isTrue);
-      expect(pendingApprovals.every((log) => log.requiresApproval && !log.approved), isTrue);
+      expect(
+          pendingApprovals
+              .every((log) => log.requiresApproval && !log.approved),
+          isTrue);
 
       // Test filtering by critical actions
       final criticalActions = await auditService.getCriticalActions();
@@ -280,15 +291,13 @@ void main() {
     test('should handle concurrent audit logging', () async {
       // Simulate concurrent audit log creation
       final futures = <Future>[];
-      
+
       for (int i = 0; i < 10; i++) {
-        futures.add(
-          auditService.logAction(
-            actionType: 'concurrent_action_$i',
-            description: 'Concurrent action $i',
-            userId: 'user_$i',
-          )
-        );
+        futures.add(auditService.logAction(
+          actionType: 'concurrent_action_$i',
+          description: 'Concurrent action $i',
+          userId: 'user_$i',
+        ));
       }
 
       // Wait for all concurrent operations to complete
@@ -296,9 +305,9 @@ void main() {
 
       // Verify all logs were created
       final logs = await auditService.getAllAuditLogs();
-      final concurrentLogs = logs.where((log) => 
-        log.actionType.startsWith('concurrent_action_')
-      ).toList();
+      final concurrentLogs = logs
+          .where((log) => log.actionType.startsWith('concurrent_action_'))
+          .toList();
 
       expect(concurrentLogs.length, equals(10));
 
@@ -325,10 +334,11 @@ void main() {
 
       // Verify audit log contains detailed evidence
       final securityLogs = await auditService.getAllAuditLogs();
-      final honeytokenLogs = securityLogs.where((log) => 
-        log.actionType.contains('honeytoken') || 
-        log.description.toLowerCase().contains('honeytoken')
-      ).toList();
+      final honeytokenLogs = securityLogs
+          .where((log) =>
+              log.actionType.contains('honeytoken') ||
+              log.description.toLowerCase().contains('honeytoken'))
+          .toList();
 
       expect(honeytokenLogs.isNotEmpty, isTrue);
 
@@ -336,7 +346,7 @@ void main() {
         expect(log.aiReasoning, isNotNull);
         expect(log.aiReasoning!.isNotEmpty, isTrue);
         expect(log.contextData, isNotNull);
-        
+
         // Verify evidence details are captured
         if (log.contextData!.containsKey('evidence')) {
           expect(log.contextData!['evidence'], isNotNull);

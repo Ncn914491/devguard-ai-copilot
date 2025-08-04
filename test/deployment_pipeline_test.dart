@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import '../lib/core/deployment/deployment_pipeline.dart';
-import '../lib/core/database/services/services.dart';
-import '../lib/core/database/database_service.dart';
-import '../lib/core/database/models/models.dart';
+import 'package:devguard_ai_copilot/core/deployment/deployment_pipeline.dart';
+import 'package:devguard_ai_copilot/core/database/services/services.dart';
+import 'package:devguard_ai_copilot/core/database/database_service.dart';
+import 'package:devguard_ai_copilot/core/database/models/models.dart';
 
 void main() {
   group('Deployment Pipeline Tests', () {
@@ -16,11 +16,11 @@ void main() {
       // Initialize FFI
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
-      
+
       // Initialize database service
       databaseService = DatabaseService.instance;
       await databaseService.initialize(':memory:');
-      
+
       pipeline = DeploymentPipeline.instance;
       specService = SpecService.instance;
       deploymentService = DeploymentService.instance;
@@ -30,17 +30,19 @@ void main() {
       await databaseService.close();
     });
 
-    test('should generate CI/CD pipeline configuration from specification', () async {
+    test('should generate CI/CD pipeline configuration from specification',
+        () async {
       // Create a test specification
       final spec = Specification(
         id: 'test-spec-1',
         originalText: 'Create a secure login system with authentication',
-        aiInterpretation: 'Security-focused login system with authentication and validation',
+        aiInterpretation:
+            'Security-focused login system with authentication and validation',
         suggestedBranchName: 'feature/secure-login',
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(spec);
 
       // Generate pipeline configuration
@@ -74,7 +76,7 @@ void main() {
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(spec);
       final config = await pipeline.generatePipelineConfig(spec.id);
 
@@ -83,7 +85,7 @@ void main() {
 
       // Verify snapshot was created
       expect(result.snapshotId, isNotNull);
-      
+
       // Verify deployment record was created
       final deployment = await pipeline.getDeployment(result.deploymentId);
       expect(deployment, isNotNull);
@@ -101,7 +103,7 @@ void main() {
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(spec);
       final config = await pipeline.generatePipelineConfig(spec.id);
 
@@ -110,7 +112,7 @@ void main() {
 
       // Verify all stages were executed
       expect(result.stageResults.length, equals(config.stages.length));
-      
+
       // Verify stage execution order
       for (int i = 0; i < config.stages.length; i++) {
         expect(result.stageResults[i].stageName, equals(config.stages[i].name));
@@ -131,7 +133,7 @@ void main() {
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(spec);
       final config = await pipeline.generatePipelineConfig(spec.id);
 
@@ -152,7 +154,8 @@ void main() {
         expect(failedResult.stageResults.isNotEmpty, isTrue);
 
         // Verify deployment was marked as failed
-        final deployment = await pipeline.getDeployment(failedResult.deploymentId);
+        final deployment =
+            await pipeline.getDeployment(failedResult.deploymentId);
         expect(deployment?.status, equals('failed'));
       }
     });
@@ -195,26 +198,32 @@ void main() {
         expect(deployment.version, isNotNull);
         expect(deployment.deployedAt, isNotNull);
         expect(deployment.snapshotId, isNotNull);
-        expect(['in_progress', 'success', 'failed'], contains(deployment.status));
+        expect(
+            ['in_progress', 'success', 'failed'], contains(deployment.status));
       }
     });
 
-    test('should generate appropriate pipeline stages based on specification content', () async {
+    test(
+        'should generate appropriate pipeline stages based on specification content',
+        () async {
       // Test security-focused specification
       final securitySpec = Specification(
         id: 'security-spec',
         originalText: 'Implement security monitoring and threat detection',
-        aiInterpretation: 'Security monitoring system with threat detection and alerting',
+        aiInterpretation:
+            'Security monitoring system with threat detection and alerting',
         suggestedBranchName: 'feature/security-monitoring',
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(securitySpec);
-      final securityConfig = await pipeline.generatePipelineConfig(securitySpec.id);
-      
+      final securityConfig =
+          await pipeline.generatePipelineConfig(securitySpec.id);
+
       // Should include security scan stage
-      final securityStageNames = securityConfig.stages.map((s) => s.name).toList();
+      final securityStageNames =
+          securityConfig.stages.map((s) => s.name).toList();
       expect(securityStageNames, contains('security_scan'));
 
       // Test non-security specification
@@ -226,12 +235,14 @@ void main() {
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(regularSpec);
-      final regularConfig = await pipeline.generatePipelineConfig(regularSpec.id);
-      
+      final regularConfig =
+          await pipeline.generatePipelineConfig(regularSpec.id);
+
       // Should not include security scan stage
-      final regularStageNames = regularConfig.stages.map((s) => s.name).toList();
+      final regularStageNames =
+          regularConfig.stages.map((s) => s.name).toList();
       expect(regularStageNames, isNot(contains('security_scan')));
     });
 
@@ -245,7 +256,7 @@ void main() {
         status: 'approved',
         createdAt: DateTime.now(),
       );
-      
+
       await specService.createSpecification(spec);
       final config = await pipeline.generatePipelineConfig(spec.id);
 
@@ -257,7 +268,7 @@ void main() {
         expect(stageResult.stageName, isNotNull);
         expect(stageResult.duration, isNotNull);
         expect(stageResult.duration.inMilliseconds, greaterThan(0));
-        
+
         if (stageResult.success) {
           expect(stageResult.output, isNotNull);
         } else {
@@ -268,14 +279,16 @@ void main() {
 
     test('should handle concurrent pipeline executions', () async {
       // Create multiple specifications
-      final specs = List.generate(3, (i) => Specification(
-        id: 'concurrent-spec-$i',
-        originalText: 'Feature $i implementation',
-        aiInterpretation: 'Implementation of feature $i',
-        suggestedBranchName: 'feature/concurrent-$i',
-        status: 'approved',
-        createdAt: DateTime.now(),
-      ));
+      final specs = List.generate(
+          3,
+          (i) => Specification(
+                id: 'concurrent-spec-$i',
+                originalText: 'Feature $i implementation',
+                aiInterpretation: 'Implementation of feature $i',
+                suggestedBranchName: 'feature/concurrent-$i',
+                status: 'approved',
+                createdAt: DateTime.now(),
+              ));
 
       // Create specifications
       for (final spec in specs) {
@@ -293,16 +306,15 @@ void main() {
 
       // Verify all pipelines executed
       expect(results.length, equals(3));
-      
+
       // Verify each result has unique deployment ID
       final deploymentIds = results.map((r) => r.deploymentId).toSet();
       expect(deploymentIds.length, equals(3));
 
       // Verify all deployments are tracked
       final recentDeployments = await pipeline.getRecentDeployments(limit: 10);
-      final concurrentDeployments = recentDeployments.where((d) => 
-        deploymentIds.contains(d.id)
-      ).toList();
+      final concurrentDeployments =
+          recentDeployments.where((d) => deploymentIds.contains(d.id)).toList();
       expect(concurrentDeployments.length, equals(3));
     });
   });

@@ -17,19 +17,20 @@ class SettingsScreen extends StatelessWidget {
           Text(
             'Settings',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+                  fontWeight: FontWeight.w600,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Configure your DevGuard AI Copilot preferences',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Settings Sections
           Expanded(
             child: ListView(
@@ -42,7 +43,8 @@ class SettingsScreen extends StatelessWidget {
                       builder: (context, themeProvider, _) {
                         return _SettingsTile(
                           title: 'Theme',
-                          subtitle: _getThemeDescription(themeProvider.themeMode),
+                          subtitle:
+                              _getThemeDescription(themeProvider.themeMode),
                           trailing: DropdownButton<ThemeMode>(
                             value: themeProvider.themeMode,
                             onChanged: (ThemeMode? mode) {
@@ -70,9 +72,9 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Security Section
                 _SettingsSection(
                   title: 'Security',
@@ -109,16 +111,17 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // AI Copilot Section
                 _SettingsSection(
                   title: 'AI Copilot',
                   children: [
                     _SettingsTile(
                       title: 'Auto-expand on alerts',
-                      subtitle: 'Automatically expand copilot when security alerts occur',
+                      subtitle:
+                          'Automatically expand copilot when security alerts occur',
                       trailing: Switch(
                         value: false,
                         onChanged: (value) {
@@ -128,7 +131,8 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     _SettingsTile(
                       title: 'Quick commands',
-                      subtitle: 'Enable /rollback, /summarize, and other quick commands',
+                      subtitle:
+                          'Enable /rollback, /summarize, and other quick commands',
                       trailing: Switch(
                         value: true,
                         onChanged: (value) {
@@ -138,22 +142,22 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // About Section
-                _SettingsSection(
+                const _SettingsSection(
                   title: 'About',
                   children: [
                     _SettingsTile(
                       title: 'Version',
                       subtitle: '1.0.0',
-                      trailing: const SizedBox.shrink(),
+                      trailing: SizedBox.shrink(),
                     ),
                     _SettingsTile(
                       title: 'Database Location',
                       subtitle: 'Local SQLite database',
-                      trailing: const SizedBox.shrink(),
+                      trailing: SizedBox.shrink(),
                     ),
                   ],
                 ),
@@ -164,7 +168,7 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   String _getThemeDescription(ThemeMode mode) {
     switch (mode) {
       case ThemeMode.system:
@@ -180,7 +184,7 @@ class SettingsScreen extends StatelessWidget {
 class _SettingsSection extends StatelessWidget {
   final String title;
   final List<Widget> children;
-  
+
   const _SettingsSection({
     required this.title,
     required this.children,
@@ -194,9 +198,9 @@ class _SettingsSection extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              ),
         ),
         const SizedBox(height: 12),
         Card(
@@ -213,7 +217,7 @@ class _SettingsTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget trailing;
-  
+
   const _SettingsTile({
     required this.title,
     required this.subtitle,

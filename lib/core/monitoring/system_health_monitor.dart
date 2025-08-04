@@ -15,7 +15,7 @@ class SystemHealthMonitor {
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
   final _errorHandler = ErrorHandler.instance;
-  
+
   Timer? _healthCheckTimer;
   SystemHealthStatus? _lastHealthStatus;
   final List<HealthCheck> _healthChecks = [];
@@ -25,11 +25,12 @@ class SystemHealthMonitor {
   Future<void> initialize() async {
     _initializeHealthChecks();
     _startHealthMonitoring();
-    
+
     await _auditService.logAction(
       actionType: 'health_monitor_initialized',
       description: 'System health monitoring initialized',
-      aiReasoning: 'Continuous health monitoring enables proactive issue detection and resolution',
+      aiReasoning:
+          'Continuous health monitoring enables proactive issue detection and resolution',
       contextData: {
         'health_checks': _healthChecks.length,
         'monitoring_interval': '30 seconds',
@@ -45,42 +46,42 @@ class SystemHealthMonitor {
         type: HealthCheckType.database,
         description: 'Check database connection and response time',
         criticalThreshold: 5000, // 5 seconds
-        warningThreshold: 2000,  // 2 seconds
+        warningThreshold: 2000, // 2 seconds
       ),
       HealthCheck(
         name: 'Memory Usage',
         type: HealthCheckType.system,
         description: 'Monitor application memory consumption',
         criticalThreshold: 90, // 90% memory usage
-        warningThreshold: 75,  // 75% memory usage
+        warningThreshold: 75, // 75% memory usage
       ),
       HealthCheck(
         name: 'Error Rate',
         type: HealthCheckType.application,
         description: 'Monitor application error frequency',
         criticalThreshold: 10, // 10 errors per minute
-        warningThreshold: 5,   // 5 errors per minute
+        warningThreshold: 5, // 5 errors per minute
       ),
       HealthCheck(
         name: 'Security Alerts',
         type: HealthCheckType.security,
         description: 'Monitor active security alerts',
         criticalThreshold: 5, // 5 critical alerts
-        warningThreshold: 2,  // 2 critical alerts
+        warningThreshold: 2, // 2 critical alerts
       ),
       HealthCheck(
         name: 'Git Integration',
         type: HealthCheckType.integration,
         description: 'Check external git service connectivity',
         criticalThreshold: 1, // Any connection failure
-        warningThreshold: 0,  // No failures
+        warningThreshold: 0, // No failures
       ),
       HealthCheck(
         name: 'Deployment Status',
         type: HealthCheckType.deployment,
         description: 'Monitor deployment pipeline health',
         criticalThreshold: 3, // 3 failed deployments
-        warningThreshold: 1,  // 1 failed deployment
+        warningThreshold: 1, // 1 failed deployment
       ),
     ]);
   }
@@ -96,25 +97,26 @@ class SystemHealthMonitor {
   Future<void> _performHealthChecks() async {
     try {
       final results = <HealthCheckResult>[];
-      
+
       for (final check in _healthChecks) {
         final result = await _performHealthCheck(check);
         results.add(result);
-        
+
         // Update metrics
         _updateMetric(check.name, result.value, result.status);
       }
-      
+
       // Calculate overall health status
       final overallStatus = _calculateOverallHealth(results);
-      
+
       // Check for status changes
-      if (_lastHealthStatus == null || _lastHealthStatus!.status != overallStatus.status) {
+      if (_lastHealthStatus == null ||
+          _lastHealthStatus!.status != overallStatus.status) {
         await _handleHealthStatusChange(overallStatus);
       }
-      
+
       _lastHealthStatus = overallStatus;
-      
+
       // Log health check if there are issues
       if (overallStatus.status != HealthStatus.healthy) {
         await _auditService.logAction(
@@ -122,15 +124,20 @@ class SystemHealthMonitor {
           description: 'System health check detected issues',
           contextData: {
             'overall_status': overallStatus.status.toString(),
-            'failed_checks': results.where((r) => r.status != HealthStatus.healthy).length,
-            'critical_issues': results.where((r) => r.status == HealthStatus.critical).length,
+            'failed_checks':
+                results.where((r) => r.status != HealthStatus.healthy).length,
+            'critical_issues':
+                results.where((r) => r.status == HealthStatus.critical).length,
           },
         );
       }
     } catch (e) {
       await _errorHandler.handleError(
         e,
-        context: {'component': 'SystemHealthMonitor', 'operation': 'performHealthChecks'},
+        context: {
+          'component': 'SystemHealthMonitor',
+          'operation': 'performHealthChecks'
+        },
         type: ErrorType.system,
         severity: ErrorSeverity.medium,
       );
@@ -168,15 +175,15 @@ class SystemHealthMonitor {
   /// Check database health
   Future<HealthCheckResult> _checkDatabaseHealth(HealthCheck check) async {
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       // Test database connectivity
       await _auditService.getAllAuditLogs(limit: 1);
       stopwatch.stop();
-      
+
       final responseTime = stopwatch.elapsedMilliseconds;
       final status = _determineHealthStatus(responseTime, check);
-      
+
       return HealthCheckResult(
         checkName: check.name,
         status: status,
@@ -202,7 +209,7 @@ class SystemHealthMonitor {
       // Get memory usage (simplified - would use actual system metrics)
       final memoryUsage = _getMemoryUsage();
       final status = _determineHealthStatus(memoryUsage, check);
-      
+
       return HealthCheckResult(
         checkName: check.name,
         status: status,
@@ -227,7 +234,7 @@ class SystemHealthMonitor {
       final errorStats = await _errorHandler.getErrorStatistics();
       final errorRate = errorStats.recentErrors.toDouble();
       final status = _determineHealthStatus(errorRate, check);
-      
+
       return HealthCheckResult(
         checkName: check.name,
         status: status,
@@ -250,13 +257,14 @@ class SystemHealthMonitor {
   Future<HealthCheckResult> _checkSecurityHealth(HealthCheck check) async {
     try {
       final alerts = await SecurityAlertService.instance.getAllSecurityAlerts();
-      final criticalAlerts = alerts.where((a) => 
-          a.severity == 'critical' && 
-          (a.status == 'new' || a.status == 'investigating')
-      ).length;
-      
+      final criticalAlerts = alerts
+          .where((a) =>
+              a.severity == 'critical' &&
+              (a.status == 'new' || a.status == 'investigating'))
+          .length;
+
       final status = _determineHealthStatus(criticalAlerts.toDouble(), check);
-      
+
       return HealthCheckResult(
         checkName: check.name,
         status: status,
@@ -280,9 +288,10 @@ class SystemHealthMonitor {
     try {
       // This would check actual git service connectivity
       // For now, simulate based on recent integration activity
-      final integrationFailures = 0; // Would be calculated from actual failures
-      final status = _determineHealthStatus(integrationFailures.toDouble(), check);
-      
+      const integrationFailures = 0; // Would be calculated from actual failures
+      final status =
+          _determineHealthStatus(integrationFailures.toDouble(), check);
+
       return HealthCheckResult(
         checkName: check.name,
         status: status,
@@ -305,13 +314,14 @@ class SystemHealthMonitor {
   Future<HealthCheckResult> _checkDeploymentHealth(HealthCheck check) async {
     try {
       final deployments = await DeploymentService.instance.getAllDeployments();
-      final recentFailures = deployments.where((d) => 
-          d.status == 'failed' && 
-          DateTime.now().difference(d.deployedAt).inHours < 24
-      ).length;
-      
+      final recentFailures = deployments
+          .where((d) =>
+              d.status == 'failed' &&
+              DateTime.now().difference(d.deployedAt).inHours < 24)
+          .length;
+
       final status = _determineHealthStatus(recentFailures.toDouble(), check);
-      
+
       return HealthCheckResult(
         checkName: check.name,
         status: status,
@@ -343,9 +353,11 @@ class SystemHealthMonitor {
 
   /// Calculate overall system health
   SystemHealthStatus _calculateOverallHealth(List<HealthCheckResult> results) {
-    final criticalCount = results.where((r) => r.status == HealthStatus.critical).length;
-    final warningCount = results.where((r) => r.status == HealthStatus.warning).length;
-    
+    final criticalCount =
+        results.where((r) => r.status == HealthStatus.critical).length;
+    final warningCount =
+        results.where((r) => r.status == HealthStatus.warning).length;
+
     HealthStatus overallStatus;
     if (criticalCount > 0) {
       overallStatus = HealthStatus.critical;
@@ -354,7 +366,7 @@ class SystemHealthMonitor {
     } else {
       overallStatus = HealthStatus.healthy;
     }
-    
+
     return SystemHealthStatus(
       status: overallStatus,
       timestamp: DateTime.now(),
@@ -364,14 +376,18 @@ class SystemHealthMonitor {
   }
 
   /// Generate health summary
-  String _generateHealthSummary(List<HealthCheckResult> results, HealthStatus status) {
+  String _generateHealthSummary(
+      List<HealthCheckResult> results, HealthStatus status) {
     final total = results.length;
-    final healthy = results.where((r) => r.status == HealthStatus.healthy).length;
-    final warnings = results.where((r) => r.status == HealthStatus.warning).length;
-    final critical = results.where((r) => r.status == HealthStatus.critical).length;
-    
+    final healthy =
+        results.where((r) => r.status == HealthStatus.healthy).length;
+    final warnings =
+        results.where((r) => r.status == HealthStatus.warning).length;
+    final critical =
+        results.where((r) => r.status == HealthStatus.critical).length;
+
     return 'System Health: ${status.toString().split('.').last.toUpperCase()} '
-           '($healthy/$total healthy, $warnings warnings, $critical critical)';
+        '($healthy/$total healthy, $warnings warnings, $critical critical)';
   }
 
   /// Handle health status changes
@@ -379,7 +395,8 @@ class SystemHealthMonitor {
     await _auditService.logAction(
       actionType: 'health_status_changed',
       description: 'System health status changed to: ${newStatus.status}',
-      aiReasoning: 'Health status change indicates system condition requiring attention',
+      aiReasoning:
+          'Health status change indicates system condition requiring attention',
       contextData: {
         'new_status': newStatus.status.toString(),
         'previous_status': _lastHealthStatus?.status.toString(),
@@ -390,7 +407,7 @@ class SystemHealthMonitor {
             .toList(),
       },
     );
-    
+
     // Trigger automated responses for critical status
     if (newStatus.status == HealthStatus.critical) {
       await _handleCriticalHealthStatus(newStatus);
@@ -402,7 +419,7 @@ class SystemHealthMonitor {
     final criticalChecks = status.checkResults
         .where((r) => r.status == HealthStatus.critical)
         .toList();
-    
+
     for (final check in criticalChecks) {
       await _triggerAutomatedResponse(check);
     }
@@ -433,10 +450,11 @@ class SystemHealthMonitor {
     await _auditService.logAction(
       actionType: 'automated_response_database',
       description: 'Automated response to critical database health',
-      aiReasoning: 'Database connectivity issues require immediate attention to prevent data loss',
+      aiReasoning:
+          'Database connectivity issues require immediate attention to prevent data loss',
       contextData: {'response_type': 'database_recovery'},
     );
-    
+
     // This would trigger database recovery procedures
   }
 
@@ -448,7 +466,7 @@ class SystemHealthMonitor {
       aiReasoning: 'High memory usage may lead to application instability',
       contextData: {'response_type': 'memory_cleanup'},
     );
-    
+
     // This would trigger memory cleanup procedures
   }
 
@@ -457,10 +475,11 @@ class SystemHealthMonitor {
     await _auditService.logAction(
       actionType: 'automated_response_errors',
       description: 'Automated response to critical error rate',
-      aiReasoning: 'High error rate indicates systemic issues requiring intervention',
+      aiReasoning:
+          'High error rate indicates systemic issues requiring intervention',
       contextData: {'response_type': 'error_mitigation'},
     );
-    
+
     // This would trigger error mitigation procedures
   }
 
@@ -469,10 +488,11 @@ class SystemHealthMonitor {
     await _auditService.logAction(
       actionType: 'automated_response_security',
       description: 'Automated response to critical security alerts',
-      aiReasoning: 'Critical security alerts require immediate investigation and response',
+      aiReasoning:
+          'Critical security alerts require immediate investigation and response',
       contextData: {'response_type': 'security_lockdown'},
     );
-    
+
     // This would trigger security response procedures
   }
 
@@ -480,7 +500,8 @@ class SystemHealthMonitor {
   Future<void> _handleGenericCritical(HealthCheckResult check) async {
     await _auditService.logAction(
       actionType: 'automated_response_generic',
-      description: 'Automated response to critical health check: ${check.checkName}',
+      description:
+          'Automated response to critical health check: ${check.checkName}',
       contextData: {
         'check_name': check.checkName,
         'check_value': check.value,
@@ -511,13 +532,14 @@ class SystemHealthMonitor {
     if (_lastHealthStatus == null) {
       await _performHealthChecks();
     }
-    
-    return _lastHealthStatus ?? SystemHealthStatus(
-      status: HealthStatus.unknown,
-      timestamp: DateTime.now(),
-      checkResults: [],
-      summary: 'Health status not available',
-    );
+
+    return _lastHealthStatus ??
+        SystemHealthStatus(
+          status: HealthStatus.unknown,
+          timestamp: DateTime.now(),
+          checkResults: [],
+          summary: 'Health status not available',
+        );
   }
 
   /// Get health metrics

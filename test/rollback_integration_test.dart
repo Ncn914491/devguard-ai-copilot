@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import '../lib/core/deployment/rollback_controller.dart';
-import '../lib/core/database/services/services.dart';
-import '../lib/core/database/database_service.dart';
-import '../lib/core/database/models/models.dart';
+import 'package:devguard_ai_copilot/core/deployment/rollback_controller.dart';
+import 'package:devguard_ai_copilot/core/database/services/services.dart';
+import 'package:devguard_ai_copilot/core/database/database_service.dart';
+import 'package:devguard_ai_copilot/core/database/models/models.dart';
 
 void main() {
   group('Rollback Integration Tests', () {
@@ -17,11 +17,11 @@ void main() {
       // Initialize FFI
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
-      
+
       // Initialize database service
       databaseService = DatabaseService.instance;
       await databaseService.initialize(':memory:');
-      
+
       rollbackController = RollbackController.instance;
       snapshotService = SnapshotService.instance;
       deploymentService = DeploymentService.instance;
@@ -107,7 +107,8 @@ void main() {
       expect(request.id, isNotNull);
       expect(request.environment, equals('production'));
       expect(request.snapshotId, equals(snapshotId));
-      expect(request.reason, equals('Critical security vulnerability detected'));
+      expect(
+          request.reason, equals('Critical security vulnerability detected'));
       expect(request.requestedBy, equals('security_team'));
       expect(request.status, equals('pending_approval'));
       expect(request.aiReasoning, isNotNull);
@@ -118,13 +119,14 @@ void main() {
       final rollbackLog = auditLogs.firstWhere(
         (log) => log.actionType == 'rollback_requested',
       );
-      
+
       expect(rollbackLog.requiresApproval, isTrue);
       expect(rollbackLog.approved, isFalse);
       expect(rollbackLog.contextData?['request_id'], equals(request.id));
     });
 
-    test('should execute approved rollback with integrity verification', () async {
+    test('should execute approved rollback with integrity verification',
+        () async {
       // Create a verified snapshot
       final snapshotId = await snapshotService.createPreDeploymentSnapshot(
         'staging',
@@ -156,32 +158,36 @@ void main() {
         expect(result.integrityCheck, isNotNull);
         expect(result.integrityCheck!.checksCount, greaterThan(0));
         expect(result.integrityCheck!.completedAt, isNotNull);
-        
+
         // Verify audit logs
-        final completedLogs = await auditService.getAuditLogsByActionType('rollback_completed');
+        final completedLogs =
+            await auditService.getAuditLogsByActionType('rollback_completed');
         final rollbackCompletedLog = completedLogs.firstWhere(
           (log) => log.contextData?['request_id'] == request.id,
         );
-        
+
         expect(rollbackCompletedLog.approvedBy, equals('admin_approver'));
-        expect(rollbackCompletedLog.contextData?['integrity_verified'], isNotNull);
+        expect(
+            rollbackCompletedLog.contextData?['integrity_verified'], isNotNull);
       } else {
         // Verify failed rollback handling
         expect(result.error, isNotNull);
         expect(result.alternativeOptions, isNotNull);
         expect(result.alternativeOptions!.isNotEmpty, isTrue);
-        
+
         // Verify failure was logged
-        final failedLogs = await auditService.getAuditLogsByActionType('rollback_failed');
+        final failedLogs =
+            await auditService.getAuditLogsByActionType('rollback_failed');
         final rollbackFailedLog = failedLogs.firstWhere(
           (log) => log.contextData?['request_id'] == request.id,
         );
-        
+
         expect(rollbackFailedLog.contextData?['error'], isNotNull);
       }
     });
 
-    test('should provide alternative recovery options on rollback failure', () async {
+    test('should provide alternative recovery options on rollback failure',
+        () async {
       // Create a verified snapshot
       final snapshotId = await snapshotService.createPreDeploymentSnapshot(
         'production',
@@ -204,7 +210,7 @@ void main() {
           request.id,
           'admin_approver',
         );
-        
+
         if (!result.success) {
           failedResult = result;
           break;
@@ -217,12 +223,14 @@ void main() {
         expect(failedResult.error, isNotNull);
         expect(failedResult.alternativeOptions, isNotNull);
         expect(failedResult.alternativeOptions!.isNotEmpty, isTrue);
-        
+
         // Verify alternative options are meaningful
         final alternatives = failedResult.alternativeOptions!;
         expect(alternatives.any((alt) => alt.contains('database')), isTrue);
-        expect(alternatives.any((alt) => alt.contains('configuration')), isTrue);
-        expect(alternatives.any((alt) => alt.contains('administrator')), isTrue);
+        expect(
+            alternatives.any((alt) => alt.contains('configuration')), isTrue);
+        expect(
+            alternatives.any((alt) => alt.contains('administrator')), isTrue);
       }
     });
 
@@ -250,13 +258,15 @@ void main() {
       );
 
       // Verify rejection was logged
-      final rejectionLogs = await auditService.getAuditLogsByActionType('rollback_rejected');
+      final rejectionLogs =
+          await auditService.getAuditLogsByActionType('rollback_rejected');
       final rejectionLog = rejectionLogs.firstWhere(
         (log) => log.contextData?['request_id'] == request.id,
       );
 
       expect(rejectionLog.contextData?['rejected_by'], equals('senior_admin'));
-      expect(rejectionLog.contextData?['reason'], equals('Insufficient justification for production rollback'));
+      expect(rejectionLog.contextData?['reason'],
+          equals('Insufficient justification for production rollback'));
       expect(rejectionLog.userId, equals('senior_admin'));
     });
 
@@ -307,7 +317,7 @@ void main() {
 
       // Manually mark snapshot as unverified (simulate verification failure)
       // Note: This would typically be done by the snapshot service during verification
-      
+
       try {
         await rollbackController.initiateRollback(
           environment: 'staging',
@@ -315,7 +325,7 @@ void main() {
           reason: 'Attempting rollback to unverified snapshot',
           requestedBy: 'test_user',
         );
-        
+
         // If we reach here without exception, the snapshot was verified
         // This is acceptable as our test snapshots are created as verified by default
       } catch (e) {
@@ -324,7 +334,8 @@ void main() {
       }
     });
 
-    test('should generate comprehensive AI reasoning for rollback decisions', () async {
+    test('should generate comprehensive AI reasoning for rollback decisions',
+        () async {
       // Create a snapshot with comprehensive metadata
       final snapshotId = await snapshotService.createPreDeploymentSnapshot(
         'production',
@@ -336,7 +347,8 @@ void main() {
       final request = await rollbackController.initiateRollback(
         environment: 'production',
         snapshotId: snapshotId,
-        reason: 'Critical security vulnerability CVE-2024-1234 detected in current deployment',
+        reason:
+            'Critical security vulnerability CVE-2024-1234 detected in current deployment',
         requestedBy: 'security_team',
       );
 

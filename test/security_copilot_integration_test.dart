@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/core/security/security_monitor.dart';
-import '../lib/core/database/services/security_alert_service.dart';
-import '../lib/core/ai/copilot_service.dart';
-import '../lib/core/deployment/rollback_controller.dart';
+import 'package:devguard_ai_copilot/core/security/security_monitor.dart';
+import 'package:devguard_ai_copilot/core/database/services/security_alert_service.dart';
+import 'package:devguard_ai_copilot/core/ai/copilot_service.dart';
+import 'package:devguard_ai_copilot/core/deployment/rollback_controller.dart';
 
 void main() {
   group('Security Monitoring + AI Copilot Integration', () {
@@ -16,7 +16,7 @@ void main() {
       alertService = SecurityAlertService.instance;
       copilotService = CopilotService.instance;
       rollbackController = RollbackController.instance;
-      
+
       // Initialize services
       await securityMonitor.initialize();
       await copilotService.initialize();
@@ -39,36 +39,36 @@ void main() {
       expect(response.suggestedActions.first, contains('investigate'));
     });
 
-    test('should enable copilot to execute rollback on critical alerts', () async {
+    test('should enable copilot to execute rollback on critical alerts',
+        () async {
       // Arrange - Create a critical alert that suggests rollback
       await securityMonitor.simulateDataExportAnomaly(60, 10); // 500% increase
 
       // Act - Use copilot to execute rollback
-      final rollbackResponse = await copilotService.processCommand('/rollback --reason="Data export anomaly detected"');
+      final rollbackResponse = await copilotService
+          .processCommand('/rollback --reason="Data export anomaly detected"');
 
       // Assert
       expect(rollbackResponse.success, isTrue);
       expect(rollbackResponse.message, contains('rollback'));
       expect(rollbackResponse.message, contains('initiated'));
-      
+
       // Verify rollback was actually triggered
       final rollbackStatus = await rollbackController.getLastRollbackStatus();
       expect(rollbackStatus, isNotNull);
       expect(rollbackStatus!.reason, contains('Data export anomaly'));
     });
 
-    test('should provide contextual security explanations through copilot', () async {
+    test('should provide contextual security explanations through copilot',
+        () async {
       // Arrange - Create multiple types of alerts
       await securityMonitor.simulateConfigurationDrift(
-        'config/security.json',
-        'credential_modification',
-        'hash1',
-        'hash2'
-      );
+          'config/security.json', 'credential_modification', 'hash1', 'hash2');
       await securityMonitor.simulateLoginFlood('192.168.1.100', 15);
 
       // Act - Ask copilot to explain security alerts
-      final explanationResponse = await copilotService.processCommand('/explain-alerts');
+      final explanationResponse =
+          await copilotService.processCommand('/explain-alerts');
 
       // Assert
       expect(explanationResponse.success, isTrue);
@@ -78,11 +78,12 @@ void main() {
       expect(explanationResponse.suggestedActions.length, greaterThan(1));
     });
 
-    test('should recommend appropriate actions based on alert severity', () async {
+    test('should recommend appropriate actions based on alert severity',
+        () async {
       // Test critical alert recommendations
       await securityMonitor.simulateHoneytokenAccess('api_key');
       var response = await copilotService.processCommand('/recommend-actions');
-      
+
       expect(response.suggestedActions, contains('immediate_investigation'));
       expect(response.suggestedActions, contains('system_isolation'));
       expect(response.suggestedActions, contains('rollback_consideration'));
@@ -90,7 +91,7 @@ void main() {
       // Test medium severity alert recommendations
       await securityMonitor.simulateOffHoursAccess(8, 23);
       response = await copilotService.processCommand('/recommend-actions');
-      
+
       expect(response.suggestedActions, contains('verify_user_identity'));
       expect(response.suggestedActions, contains('monitor_session'));
       expect(response.suggestedActions, isNot(contains('system_isolation')));
@@ -101,12 +102,13 @@ void main() {
       await securityMonitor.simulateUnusualLoginSource('203.0.113.75');
 
       // Act - Use copilot to create security task
-      final taskResponse = await copilotService.processCommand('/create-security-task');
+      final taskResponse =
+          await copilotService.processCommand('/create-security-task');
 
       // Assert
       expect(taskResponse.success, isTrue);
       expect(taskResponse.message, contains('security task created'));
-      
+
       // Verify task was created with appropriate details
       final taskDetails = taskResponse.contextData?['task_details'];
       expect(taskDetails, isNotNull);
@@ -124,7 +126,8 @@ void main() {
       await securityMonitor.simulateLoginFlood('192.168.1.202', 6);
 
       // Act - Ask copilot for trend analysis
-      final trendResponse = await copilotService.processCommand('/security-trends');
+      final trendResponse =
+          await copilotService.processCommand('/security-trends');
 
       // Assert
       expect(trendResponse.success, isTrue);
@@ -134,7 +137,8 @@ void main() {
       expect(trendResponse.suggestedActions, contains('network_analysis'));
     });
 
-    test('should enable quick security response through copilot commands', () async {
+    test('should enable quick security response through copilot commands',
+        () async {
       // Arrange - Create a critical security event
       await securityMonitor.simulateHoneytokenAccess('ssn');
 
@@ -148,44 +152,50 @@ void main() {
 
       for (final command in commands) {
         final response = await copilotService.processCommand(command);
-        
+
         // Assert each command executes successfully
-        expect(response.success, isTrue, reason: 'Command $command should succeed');
-        expect(response.message, isNotEmpty, reason: 'Command $command should have a response');
+        expect(response.success, isTrue,
+            reason: 'Command $command should succeed');
+        expect(response.message, isNotEmpty,
+            reason: 'Command $command should have a response');
       }
     });
 
-    test('should maintain security context across copilot conversations', () async {
+    test('should maintain security context across copilot conversations',
+        () async {
       // Arrange - Create initial security context
       await securityMonitor.simulateDataExportAnomaly(35, 10);
 
       // Act - Have a conversation about the security event
-      var response1 = await copilotService.processCommand('What security issues do we have?');
-      var response2 = await copilotService.processCommand('Should we be concerned about this?');
-      var response3 = await copilotService.processCommand('What should we do next?');
+      var response1 = await copilotService
+          .processCommand('What security issues do we have?');
+      var response2 = await copilotService
+          .processCommand('Should we be concerned about this?');
+      var response3 =
+          await copilotService.processCommand('What should we do next?');
 
       // Assert - Each response should maintain context
       expect(response1.message, contains('data export'));
       expect(response2.message, contains('concerned'));
       expect(response2.contextData?['previous_context'], isNotNull);
       expect(response3.suggestedActions, isNotEmpty);
-      expect(response3.contextData?['conversation_context'], contains('data_export_anomaly'));
+      expect(response3.contextData?['conversation_context'],
+          contains('data_export_anomaly'));
     });
 
-    test('should integrate with deployment pipeline for security-triggered rollbacks', () async {
+    test(
+        'should integrate with deployment pipeline for security-triggered rollbacks',
+        () async {
       // Arrange - Simulate a deployment in progress
       await rollbackController.simulateDeploymentInProgress('v1.2.3');
 
       // Create a critical security event during deployment
-      await securityMonitor.simulateConfigurationDrift(
-        'config/production.json',
-        'privilege_escalation',
-        'prod_hash_1',
-        'compromised_hash_2'
-      );
+      await securityMonitor.simulateConfigurationDrift('config/production.json',
+          'privilege_escalation', 'prod_hash_1', 'compromised_hash_2');
 
       // Act - Copilot should recommend immediate rollback
-      final response = await copilotService.processCommand('/assess-deployment-security');
+      final response =
+          await copilotService.processCommand('/assess-deployment-security');
 
       // Assert
       expect(response.success, isTrue);
@@ -203,16 +213,20 @@ void main() {
       await securityMonitor.simulateUnusualLoginSource('203.0.113.100');
 
       // Act - Request security metrics
-      final metricsResponse = await copilotService.processCommand('/security-metrics');
+      final metricsResponse =
+          await copilotService.processCommand('/security-metrics');
 
       // Assert
       expect(metricsResponse.success, isTrue);
       expect(metricsResponse.contextData?['total_alerts'], equals(4));
       expect(metricsResponse.contextData?['critical_alerts'], equals(1));
       expect(metricsResponse.contextData?['medium_alerts'], equals(2));
-      expect(metricsResponse.contextData?['alert_types'], contains('database_breach'));
-      expect(metricsResponse.contextData?['alert_types'], contains('auth_flood'));
-      expect(metricsResponse.contextData?['alert_types'], contains('system_anomaly'));
+      expect(metricsResponse.contextData?['alert_types'],
+          contains('database_breach'));
+      expect(
+          metricsResponse.contextData?['alert_types'], contains('auth_flood'));
+      expect(metricsResponse.contextData?['alert_types'],
+          contains('system_anomaly'));
     });
   });
 }
@@ -222,16 +236,23 @@ extension CopilotSecurityTesting on CopilotService {
   Future<CopilotResponse> processCommand(String command) async {
     // This would be implemented to handle security-specific commands
     // For testing purposes, we simulate appropriate responses
-    
+
     if (command.contains('/security-status')) {
-      final alerts = await SecurityAlertService.instance.getRecentAlerts(limit: 5);
-      final criticalAlerts = alerts.where((a) => a.severity == 'critical').toList();
-      
+      final alerts =
+          await SecurityAlertService.instance.getRecentAlerts(limit: 5);
+      final criticalAlerts =
+          alerts.where((a) => a.severity == 'critical').toList();
+
       if (criticalAlerts.isNotEmpty) {
         return CopilotResponse(
           success: true,
-          message: 'CRITICAL: ${criticalAlerts.length} critical security alerts detected. Immediate attention required.',
-          suggestedActions: ['investigate_immediately', 'consider_rollback', 'notify_security_team'],
+          message:
+              'CRITICAL: ${criticalAlerts.length} critical security alerts detected. Immediate attention required.',
+          suggestedActions: [
+            'investigate_immediately',
+            'consider_rollback',
+            'notify_security_team'
+          ],
           contextData: {
             'critical_count': criticalAlerts.length,
             'alert_types': criticalAlerts.map((a) => a.type).toSet().toList(),
@@ -239,16 +260,19 @@ extension CopilotSecurityTesting on CopilotService {
         );
       }
     }
-    
+
     if (command.contains('/rollback')) {
       return CopilotResponse(
         success: true,
         message: 'Emergency rollback initiated due to security concerns.',
-        suggestedActions: ['monitor_rollback_progress', 'verify_system_integrity'],
+        suggestedActions: [
+          'monitor_rollback_progress',
+          'verify_system_integrity'
+        ],
         contextData: {'rollback_initiated': true},
       );
     }
-    
+
     // Default response for testing
     return CopilotResponse(
       success: true,
@@ -264,7 +288,7 @@ extension RollbackControllerTesting on RollbackController {
   Future<void> simulateDeploymentInProgress(String version) async {
     // Simulate deployment in progress for testing
   }
-  
+
   Future<RollbackStatus?> getLastRollbackStatus() async {
     // Return mock rollback status for testing
     return RollbackStatus(

@@ -1,5 +1,6 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:convert';
+import '../database/services/audit_log_service.dart';
 
 class GeminiService {
   static final GeminiService _instance = GeminiService._internal();
@@ -8,6 +9,7 @@ class GeminiService {
 
   late GenerativeModel _model;
   bool _initialized = false;
+  final _auditService = AuditLogService.instance;
 
   /// Initialize the Gemini service with API key
   /// For demo purposes, we'll use a mock implementation if no API key is provided
@@ -27,7 +29,8 @@ class GeminiService {
 
   /// Process natural language specification and return structured git actions
   /// Satisfies Requirements: 1.1, 1.2 (Natural language parsing and git action generation)
-  Future<SpecificationResult> processSpecification(String naturalLanguageInput) async {
+  Future<SpecificationResult> processSpecification(
+      String naturalLanguageInput) async {
     if (!_initialized) {
       // Mock implementation for demo purposes
       return _mockProcessSpecification(naturalLanguageInput);
@@ -37,9 +40,10 @@ class GeminiService {
       final prompt = _buildSpecificationPrompt(naturalLanguageInput);
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
-      
+
       if (response.text != null) {
-        return _parseSpecificationResponse(response.text!, naturalLanguageInput);
+        return _parseSpecificationResponse(
+            response.text!, naturalLanguageInput);
       } else {
         throw Exception('No response from Gemini API');
       }
@@ -79,14 +83,18 @@ Respond only with valid JSON.
   }
 
   /// Parse the Gemini API response into a SpecificationResult
-  SpecificationResult _parseSpecificationResponse(String response, String originalInput) {
+  SpecificationResult _parseSpecificationResponse(
+      String response, String originalInput) {
     try {
       final jsonResponse = json.decode(response);
-      
+
       return SpecificationResult(
-        interpretation: jsonResponse['interpretation'] ?? 'AI interpretation not available',
-        branchName: jsonResponse['branchName'] ?? _generateDefaultBranchName(originalInput),
-        commitMessage: jsonResponse['commitMessage'] ?? _generateDefaultCommitMessage(originalInput),
+        interpretation:
+            jsonResponse['interpretation'] ?? 'AI interpretation not available',
+        branchName: jsonResponse['branchName'] ??
+            _generateDefaultBranchName(originalInput),
+        commitMessage: jsonResponse['commitMessage'] ??
+            _generateDefaultCommitMessage(originalInput),
         placeholderDiff: jsonResponse['placeholderDiff'],
         suggestedAssignee: jsonResponse['suggestedAssignee'],
         estimatedComplexity: jsonResponse['estimatedComplexity'] ?? 'medium',
@@ -98,7 +106,8 @@ Respond only with valid JSON.
         interpretation: 'AI processed the specification: $originalInput',
         branchName: _generateDefaultBranchName(originalInput),
         commitMessage: _generateDefaultCommitMessage(originalInput),
-        placeholderDiff: 'Implementation details to be determined during development',
+        placeholderDiff:
+            'Implementation details to be determined during development',
         suggestedAssignee: null,
         estimatedComplexity: 'medium',
         requiredSkills: [],
@@ -110,41 +119,55 @@ Respond only with valid JSON.
   /// Satisfies Requirements: 1.1, 1.5 (Specification processing with clarification)
   SpecificationResult _mockProcessSpecification(String input) {
     final lowerInput = input.toLowerCase();
-    
+
     // Analyze input for keywords to provide intelligent suggestions
     String branchName;
     String commitMessage;
     String interpretation;
     String complexity = 'medium';
     List<String> skills = [];
-    
-    if (lowerInput.contains('security') || lowerInput.contains('auth') || lowerInput.contains('encryption') || lowerInput.contains('oauth')) {
+
+    if (lowerInput.contains('security') ||
+        lowerInput.contains('auth') ||
+        lowerInput.contains('encryption') ||
+        lowerInput.contains('oauth')) {
       branchName = 'feature/security-enhancement';
       commitMessage = 'feat: implement security enhancement';
-      interpretation = 'Implementing security-related functionality including authentication and authorization improvements';
+      interpretation =
+          'Implementing security-related functionality including authentication and authorization improvements';
       complexity = 'high';
       skills = ['security', 'authentication', 'backend'];
-    } else if (lowerInput.contains('ui') || lowerInput.contains('interface') || lowerInput.contains('dashboard')) {
+    } else if (lowerInput.contains('ui') ||
+        lowerInput.contains('interface') ||
+        lowerInput.contains('dashboard')) {
       branchName = 'feature/ui-improvement';
       commitMessage = 'feat: enhance user interface';
-      interpretation = 'Improving user interface components and dashboard functionality';
+      interpretation =
+          'Improving user interface components and dashboard functionality';
       complexity = 'medium';
       skills = ['frontend', 'ui/ux', 'flutter'];
     } else if (lowerInput.contains('database') || lowerInput.contains('data')) {
       branchName = 'feature/database-update';
       commitMessage = 'feat: update database schema and operations';
-      interpretation = 'Implementing database schema changes and data management improvements';
+      interpretation =
+          'Implementing database schema changes and data management improvements';
       complexity = 'medium';
       skills = ['database', 'backend', 'sql'];
     } else if (lowerInput.contains('api') || lowerInput.contains('service')) {
       branchName = 'feature/api-integration';
       commitMessage = 'feat: integrate new API service';
-      interpretation = 'Adding new API integration and service layer functionality';
+      interpretation =
+          'Adding new API integration and service layer functionality';
       complexity = 'medium';
       skills = ['api', 'backend', 'integration'];
     } else {
       // Generic feature
-      final words = input.split(' ').take(3).join('-').toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), '');
+      final words = input
+          .split(' ')
+          .take(3)
+          .join('-')
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9-]'), '');
       branchName = 'feature/$words';
       commitMessage = 'feat: implement $words';
       interpretation = 'Implementing the requested feature: $input';
@@ -155,7 +178,8 @@ Respond only with valid JSON.
       interpretation: interpretation,
       branchName: branchName,
       commitMessage: commitMessage,
-      placeholderDiff: 'Changes will include:\n- Implementation of core functionality\n- Unit tests\n- Documentation updates\n- Integration with existing systems',
+      placeholderDiff:
+          'Changes will include:\n- Implementation of core functionality\n- Unit tests\n- Documentation updates\n- Integration with existing systems',
       suggestedAssignee: null,
       estimatedComplexity: complexity,
       requiredSkills: skills,
@@ -164,13 +188,19 @@ Respond only with valid JSON.
 
   /// Generate a default branch name from input
   String _generateDefaultBranchName(String input) {
-    final words = input.split(' ').take(3).join('-').toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), '');
+    final words = input
+        .split(' ')
+        .take(3)
+        .join('-')
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9-]'), '');
     return 'feature/$words';
   }
 
   /// Generate a default commit message from input
   String _generateDefaultCommitMessage(String input) {
-    final shortDescription = input.length > 50 ? '${input.substring(0, 47)}...' : input;
+    final shortDescription =
+        input.length > 50 ? '${input.substring(0, 47)}...' : input;
     return 'feat: $shortDescription';
   }
 
@@ -185,7 +215,7 @@ Respond only with valid JSON.
     try {
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
-      
+
       if (response.text != null) {
         return response.text!;
       } else {
@@ -200,32 +230,32 @@ Respond only with valid JSON.
   /// Mock response generation for development/demo
   String _mockGenerateResponse(String prompt) {
     final lowerPrompt = prompt.toLowerCase();
-    
+
     if (lowerPrompt.contains('security')) {
       return 'Based on current security monitoring, all systems are operating normally. '
-             'I\'ve detected no critical alerts, and all honeytokens are active and uncompromised. '
-             'The system is configured to detect database breaches, configuration drift, and '
-             'network anomalies in real-time.';
+          'I\'ve detected no critical alerts, and all honeytokens are active and uncompromised. '
+          'The system is configured to detect database breaches, configuration drift, and '
+          'network anomalies in real-time.';
     } else if (lowerPrompt.contains('deployment')) {
       return 'Current deployment status shows all environments are stable. '
-             'The last production deployment was successful with automated rollback '
-             'capabilities enabled. I can help you manage deployments, create snapshots, '
-             'or initiate rollbacks if needed.';
+          'The last production deployment was successful with automated rollback '
+          'capabilities enabled. I can help you manage deployments, create snapshots, '
+          'or initiate rollbacks if needed.';
     } else if (lowerPrompt.contains('team')) {
       return 'Your team currently has 4 active members with balanced workloads. '
-             'I can suggest task assignments based on expertise and availability. '
-             'Would you like me to analyze current assignments or suggest optimizations?';
+          'I can suggest task assignments based on expertise and availability. '
+          'Would you like me to analyze current assignments or suggest optimizations?';
     } else if (lowerPrompt.contains('workflow')) {
       return 'The development workflow is operating smoothly with automated git integration. '
-             'Recent specifications have been processed and converted to structured tasks. '
-             'I can help you create new specifications or track progress on existing ones.';
+          'Recent specifications have been processed and converted to structured tasks. '
+          'I can help you create new specifications or track progress on existing ones.';
     } else {
       return 'I\'m here to help with your DevGuard AI Copilot system. I can assist with:\n\n'
-             '• Security monitoring and alerts\n'
-             '• Deployment management and rollbacks\n'
-             '• Team assignments and workflow optimization\n'
-             '• Specification processing and git integration\n\n'
-             'What would you like to know more about?';
+          '• Security monitoring and alerts\n'
+          '• Deployment management and rollbacks\n'
+          '• Team assignments and workflow optimization\n'
+          '• Specification processing and git integration\n\n'
+          'What would you like to know more about?';
     }
   }
 
@@ -238,7 +268,7 @@ Respond only with valid JSON.
     try {
       // Simulate AI response for security explanations
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       return _generateSecurityExplanation(prompt);
     } catch (e) {
       await _auditService.logAction(

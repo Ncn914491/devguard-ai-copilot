@@ -21,11 +21,11 @@ class CopilotService {
   /// Satisfies Requirements: 4.1, 4.3, 4.4 (Copilot interface with command parsing)
   Future<CopilotResponse> processCommand(String input, {String? userId}) async {
     final commandId = _uuid.v4();
-    
+
     try {
       // Parse command
       final command = _parseCommand(input.trim());
-      
+
       // Log command processing
       await _auditService.logAction(
         actionType: 'copilot_command_processed',
@@ -66,7 +66,7 @@ class CopilotService {
         contextData: {'command_id': commandId, 'error': e.toString()},
         userId: userId,
       );
-      
+
       return CopilotResponse(
         type: CopilotResponseType.error,
         message: 'Error processing command: ${e.toString()}',
@@ -81,7 +81,7 @@ class CopilotService {
       final parts = input.substring(1).split(' ');
       final commandName = parts[0].toLowerCase();
       final args = parts.length > 1 ? parts.sublist(1) : <String>[];
-      
+
       switch (commandName) {
         case 'rollback':
           return CopilotCommand(
@@ -125,16 +125,20 @@ class CopilotService {
 
   /// Handle rollback command
   /// Satisfies Requirements: 7.2, 7.3 (Rollback with human confirmation)
-  Future<CopilotResponse> _handleRollbackCommand(CopilotCommand command, String? userId) async {
+  Future<CopilotResponse> _handleRollbackCommand(
+      CopilotCommand command, String? userId) async {
     try {
-      final environment = command.args.isNotEmpty ? command.args[0] : 'production';
-      
+      final environment =
+          command.args.isNotEmpty ? command.args[0] : 'production';
+
       // Get latest deployment for environment
-      final deployment = await _deploymentService.getLatestSuccessfulDeployment(environment);
+      final deployment =
+          await _deploymentService.getLatestSuccessfulDeployment(environment);
       if (deployment == null) {
         return CopilotResponse(
           type: CopilotResponseType.info,
-          message: 'No successful deployments found for $environment environment.',
+          message:
+              'No successful deployments found for $environment environment.',
           requiresApproval: false,
         );
       }
@@ -144,16 +148,18 @@ class CopilotService {
       if (snapshots.isEmpty) {
         return CopilotResponse(
           type: CopilotResponseType.error,
-          message: 'No verified snapshots available for rollback in $environment.',
+          message:
+              'No verified snapshots available for rollback in $environment.',
           requiresApproval: false,
         );
       }
 
       final latestSnapshot = snapshots.first;
-      
+
       // Generate AI explanation for rollback
-      final explanation = await _generateRollbackExplanation(deployment, latestSnapshot);
-      
+      final explanation =
+          await _generateRollbackExplanation(deployment, latestSnapshot);
+
       return CopilotResponse(
         type: CopilotResponseType.rollback,
         message: explanation,
@@ -175,7 +181,8 @@ class CopilotService {
 
   /// Handle assign command
   /// Satisfies Requirements: 5.2, 5.3 (AI-suggested assignments with approval)
-  Future<CopilotResponse> _handleAssignCommand(CopilotCommand command, String? userId) async {
+  Future<CopilotResponse> _handleAssignCommand(
+      CopilotCommand command, String? userId) async {
     try {
       if (command.args.length < 2) {
         return CopilotResponse(
@@ -187,11 +194,11 @@ class CopilotService {
 
       final specId = command.args[0];
       final memberId = command.args[1];
-      
+
       // Validate spec and member exist
       final spec = await _specService.getSpecification(specId);
       final member = await TeamMemberService.instance.getTeamMember(memberId);
-      
+
       if (spec == null) {
         return CopilotResponse(
           type: CopilotResponseType.error,
@@ -199,7 +206,7 @@ class CopilotService {
           requiresApproval: false,
         );
       }
-      
+
       if (member == null) {
         return CopilotResponse(
           type: CopilotResponseType.error,
@@ -208,9 +215,10 @@ class CopilotService {
         );
       }
 
-      final explanation = 'Assigning specification "${spec.suggestedBranchName}" to ${member.name} (${member.role}). '
+      final explanation =
+          'Assigning specification "${spec.suggestedBranchName}" to ${member.name} (${member.role}). '
           'Member has expertise in: ${member.expertise.join(", ")} and current workload: ${member.workload}.';
-      
+
       return CopilotResponse(
         type: CopilotResponseType.assignment,
         message: explanation,
@@ -232,10 +240,11 @@ class CopilotService {
 
   /// Handle summarize command
   /// Satisfies Requirements: 4.2 (System status summaries)
-  Future<CopilotResponse> _handleSummarizeCommand(CopilotCommand command, String? userId) async {
+  Future<CopilotResponse> _handleSummarizeCommand(
+      CopilotCommand command, String? userId) async {
     try {
       final summary = await _generateSystemSummary();
-      
+
       return CopilotResponse(
         type: CopilotResponseType.summary,
         message: summary,
@@ -262,7 +271,7 @@ Available Commands:
 
 You can also chat naturally with the AI copilot for explanations and guidance.
     ''';
-    
+
     return CopilotResponse(
       type: CopilotResponseType.info,
       message: helpText,
@@ -272,10 +281,11 @@ You can also chat naturally with the AI copilot for explanations and guidance.
 
   /// Handle natural language chat
   /// Satisfies Requirements: 4.1, 4.2 (Conversational AI assistance)
-  Future<CopilotResponse> _handleChatCommand(CopilotCommand command, String? userId) async {
+  Future<CopilotResponse> _handleChatCommand(
+      CopilotCommand command, String? userId) async {
     try {
       final input = command.rawInput;
-      
+
       // Use Gemini for natural language processing
       String response;
       if (_geminiService.isInitialized) {
@@ -284,7 +294,7 @@ You can also chat naturally with the AI copilot for explanations and guidance.
       } else {
         response = await _generateMockChatResponse(input);
       }
-      
+
       return CopilotResponse(
         type: CopilotResponseType.chat,
         message: response,
@@ -300,7 +310,8 @@ You can also chat naturally with the AI copilot for explanations and guidance.
   }
 
   /// Generate rollback explanation using AI
-  Future<String> _generateRollbackExplanation(Deployment deployment, Snapshot snapshot) async {
+  Future<String> _generateRollbackExplanation(
+      Deployment deployment, Snapshot snapshot) async {
     return '''
 🔄 Rollback Recommendation for ${deployment.environment}
 
@@ -321,26 +332,29 @@ This action requires human approval and will be logged for audit purposes.
     final specs = await _specService.getAllSpecifications();
     final alerts = await _securityAlertService.getAllSecurityAlerts();
     final deployments = await _deploymentService.getAllDeployments();
-    
+
     final draftSpecs = specs.where((s) => s.status == 'draft').length;
     final approvedSpecs = specs.where((s) => s.status == 'approved').length;
-    final activeAlerts = alerts.where((a) => a.status == 'new' || a.status == 'investigating').length;
-    final recentDeployments = deployments.where((d) => 
-        DateTime.now().difference(d.deployedAt).inDays < 7).length;
-    
+    final activeAlerts = alerts
+        .where((a) => a.status == 'new' || a.status == 'investigating')
+        .length;
+    final recentDeployments = deployments
+        .where((d) => DateTime.now().difference(d.deployedAt).inDays < 7)
+        .length;
+
     return '''
 📊 System Summary
 
 Specifications:
-• ${draftSpecs} draft specifications pending review
-• ${approvedSpecs} approved specifications ready for implementation
+• $draftSpecs draft specifications pending review
+• $approvedSpecs approved specifications ready for implementation
 
 Security:
-• ${activeAlerts} active security alerts requiring attention
+• $activeAlerts active security alerts requiring attention
 • ${alerts.length - activeAlerts} resolved alerts
 
 Deployments:
-• ${recentDeployments} deployments in the last 7 days
+• $recentDeployments deployments in the last 7 days
 • ${deployments.where((d) => d.status == 'success').length} successful deployments total
 
 All systems are monitored and audit logs are being maintained for transparency.
@@ -351,10 +365,11 @@ All systems are monitored and audit logs are being maintained for transparency.
   /// Satisfies Requirements: 4.2 (Contextual explanations and help)
   Future<String> _generateMockChatResponse(String input) async {
     final lowerInput = input.toLowerCase();
-    
+
     if (lowerInput.contains('security') || lowerInput.contains('alert')) {
       return await _generateSecurityResponse();
-    } else if (lowerInput.contains('deploy') || lowerInput.contains('rollback')) {
+    } else if (lowerInput.contains('deploy') ||
+        lowerInput.contains('rollback')) {
       return await _generateDeploymentResponse();
     } else if (lowerInput.contains('spec') || lowerInput.contains('task')) {
       return await _generateSpecificationResponse();
@@ -370,8 +385,10 @@ All systems are monitored and audit logs are being maintained for transparency.
   /// Generate security-focused response with current alert context
   Future<String> _generateSecurityResponse() async {
     final alerts = await _securityAlertService.getRecentAlerts(limit: 5);
-    final activeAlerts = alerts.where((a) => a.status == 'new' || a.status == 'investigating').toList();
-    
+    final activeAlerts = alerts
+        .where((a) => a.status == 'new' || a.status == 'investigating')
+        .toList();
+
     if (activeAlerts.isEmpty) {
       return '🛡️ Security Status: All systems secure! No active alerts detected.\n\n'
           'Current monitoring includes:\n'
@@ -381,9 +398,10 @@ All systems are monitored and audit logs are being maintained for transparency.
           '• Authentication flood protection\n\n'
           'Use /summarize for detailed security metrics.';
     } else {
-      final criticalAlerts = activeAlerts.where((a) => a.severity == 'critical').length;
+      final criticalAlerts =
+          activeAlerts.where((a) => a.severity == 'critical').length;
       final highAlerts = activeAlerts.where((a) => a.severity == 'high').length;
-      
+
       return '⚠️ Security Alert Summary:\n\n'
           '• ${activeAlerts.length} active alerts requiring attention\n'
           '• $criticalAlerts critical severity alerts\n'
@@ -397,9 +415,10 @@ All systems are monitored and audit logs are being maintained for transparency.
   /// Generate deployment-focused response with current status
   Future<String> _generateDeploymentResponse() async {
     final deployments = await _deploymentService.getAllDeployments();
-    final recentDeployments = deployments.where((d) => 
-        DateTime.now().difference(d.deployedAt).inDays < 7).toList();
-    
+    final recentDeployments = deployments
+        .where((d) => DateTime.now().difference(d.deployedAt).inDays < 7)
+        .toList();
+
     if (recentDeployments.isEmpty) {
       return '🚀 No recent deployments in the last 7 days.\n\n'
           'Available actions:\n'
@@ -408,10 +427,12 @@ All systems are monitored and audit logs are being maintained for transparency.
           '• Check deployment pipeline configurations\n\n'
           'All deployments are automatically snapshotted for safe rollbacks.';
     } else {
-      final successful = recentDeployments.where((d) => d.status == 'success').length;
-      final failed = recentDeployments.where((d) => d.status == 'failed').length;
+      final successful =
+          recentDeployments.where((d) => d.status == 'success').length;
+      final failed =
+          recentDeployments.where((d) => d.status == 'failed').length;
       final latest = recentDeployments.first;
-      
+
       return '📊 Deployment Summary (Last 7 days):\n\n'
           '• ${recentDeployments.length} total deployments\n'
           '• $successful successful deployments\n'
@@ -427,7 +448,7 @@ All systems are monitored and audit logs are being maintained for transparency.
     final specs = await _specService.getAllSpecifications();
     final draftSpecs = specs.where((s) => s.status == 'draft').toList();
     final approvedSpecs = specs.where((s) => s.status == 'approved').toList();
-    
+
     return '📋 Specification Status:\n\n'
         '• ${draftSpecs.length} draft specifications pending review\n'
         '• ${approvedSpecs.length} approved specifications ready for implementation\n'
@@ -442,7 +463,7 @@ All systems are monitored and audit logs are being maintained for transparency.
     final members = await _teamMemberService.getAllTeamMembers();
     final activeMembers = members.where((m) => m.status == 'active').toList();
     final benchMembers = members.where((m) => m.status == 'bench').toList();
-    
+
     return '👥 Team Status:\n\n'
         '• ${activeMembers.length} active team members\n'
         '• ${benchMembers.length} members available on bench\n'
@@ -455,7 +476,7 @@ All systems are monitored and audit logs are being maintained for transparency.
   /// Generate explanation response based on context
   Future<String> _generateExplanationResponse(String input) async {
     final lowerInput = input.toLowerCase();
-    
+
     if (lowerInput.contains('honeytoken')) {
       return '🍯 Honeytokens Explained:\n\n'
           'Honeytokens are fake sensitive data records deployed in your database to detect unauthorized access. '
@@ -494,7 +515,8 @@ All systems are monitored and audit logs are being maintained for transparency.
 
   /// Execute approved action
   /// Satisfies Requirements: 9.4 (Human approval recording)
-  Future<void> executeApprovedAction(String actionId, Map<String, dynamic> actionData, String approvedBy) async {
+  Future<void> executeApprovedAction(String actionId,
+      Map<String, dynamic> actionData, String approvedBy) async {
     await _auditService.logAction(
       actionType: 'copilot_action_approved',
       description: 'Executed approved copilot action: $actionId',
@@ -514,7 +536,7 @@ All systems are monitored and audit logs are being maintained for transparency.
       }
 
       final contextualInfo = await _getAlertContext(alert);
-      
+
       return '''
 🔍 Security Alert Analysis
 
@@ -544,24 +566,24 @@ ${alert.rollbackSuggested ? '\n⚠️ Rollback recommended for this alert.' : ''
     switch (alert.type) {
       case 'database_breach':
         return '• Database monitoring detected suspicious query patterns\n'
-               '• This may indicate data exfiltration attempts\n'
-               '• Check recent database access logs for anomalies';
+            '• This may indicate data exfiltration attempts\n'
+            '• Check recent database access logs for anomalies';
       case 'system_anomaly':
         return '• System file or configuration changes detected\n'
-               '• This could indicate unauthorized modifications\n'
-               '• Verify all recent system changes are authorized';
+            '• This could indicate unauthorized modifications\n'
+            '• Verify all recent system changes are authorized';
       case 'network_anomaly':
         return '• Unusual network traffic patterns detected\n'
-               '• May indicate command & control communication\n'
-               '• Review network connections and firewall logs';
+            '• May indicate command & control communication\n'
+            '• Review network connections and firewall logs';
       case 'auth_flood':
         return '• Multiple failed authentication attempts detected\n'
-               '• This suggests a brute force or credential stuffing attack\n'
-               '• Consider implementing rate limiting or account lockouts';
+            '• This suggests a brute force or credential stuffing attack\n'
+            '• Consider implementing rate limiting or account lockouts';
       default:
         return '• Alert triggered by automated monitoring systems\n'
-               '• Review the evidence data for specific details\n'
-               '• Consult security team if unsure about severity';
+            '• Review the evidence data for specific details\n'
+            '• Consult security team if unsure about severity';
     }
   }
 
@@ -570,29 +592,29 @@ ${alert.rollbackSuggested ? '\n⚠️ Rollback recommended for this alert.' : ''
     switch (alert.severity) {
       case 'critical':
         return '1. Immediately investigate the alert\n'
-               '2. Consider emergency rollback if system compromise suspected\n'
-               '3. Notify security team and stakeholders\n'
-               '4. Document all investigation steps';
+            '2. Consider emergency rollback if system compromise suspected\n'
+            '3. Notify security team and stakeholders\n'
+            '4. Document all investigation steps';
       case 'high':
         return '1. Investigate within 1 hour\n'
-               '2. Review related system logs\n'
-               '3. Prepare rollback plan if needed\n'
-               '4. Update alert status as investigation progresses';
+            '2. Review related system logs\n'
+            '3. Prepare rollback plan if needed\n'
+            '4. Update alert status as investigation progresses';
       case 'medium':
         return '1. Investigate within 4 hours\n'
-               '2. Review alert evidence\n'
-               '3. Determine if escalation is needed\n'
-               '4. Document findings';
+            '2. Review alert evidence\n'
+            '3. Determine if escalation is needed\n'
+            '4. Document findings';
       case 'low':
         return '1. Review during normal business hours\n'
-               '2. Analyze for patterns with other alerts\n'
-               '3. Update monitoring rules if false positive\n'
-               '4. Close alert when resolved';
+            '2. Analyze for patterns with other alerts\n'
+            '3. Update monitoring rules if false positive\n'
+            '4. Close alert when resolved';
       default:
         return '1. Review alert details\n'
-               '2. Investigate based on alert type\n'
-               '3. Follow standard security procedures\n'
-               '4. Document resolution';
+            '2. Investigate based on alert type\n'
+            '3. Follow standard security procedures\n'
+            '4. Document resolution';
     }
   }
 
@@ -605,22 +627,35 @@ ${alert.rollbackSuggested ? '\n⚠️ Rollback recommended for this alert.' : ''
       final specs = await _specService.getAllSpecifications();
       final members = await _teamMemberService.getAllTeamMembers();
 
-      final activeAlerts = alerts.where((a) => a.status == 'new' || a.status == 'investigating').length;
-      final criticalAlerts = alerts.where((a) => a.severity == 'critical' && (a.status == 'new' || a.status == 'investigating')).length;
-      final recentDeployments = deployments.where((d) => DateTime.now().difference(d.deployedAt).inDays < 7).length;
-      final failedDeployments = deployments.where((d) => d.status == 'failed' && DateTime.now().difference(d.deployedAt).inDays < 7).length;
+      final activeAlerts = alerts
+          .where((a) => a.status == 'new' || a.status == 'investigating')
+          .length;
+      final criticalAlerts = alerts
+          .where((a) =>
+              a.severity == 'critical' &&
+              (a.status == 'new' || a.status == 'investigating'))
+          .length;
+      final recentDeployments = deployments
+          .where((d) => DateTime.now().difference(d.deployedAt).inDays < 7)
+          .length;
+      final failedDeployments = deployments
+          .where((d) =>
+              d.status == 'failed' &&
+              DateTime.now().difference(d.deployedAt).inDays < 7)
+          .length;
       final activeMembers = members.where((m) => m.status == 'active').length;
       final pendingSpecs = specs.where((s) => s.status == 'draft').length;
 
-      final healthScore = _calculateHealthScore(activeAlerts, criticalAlerts, failedDeployments, recentDeployments);
-      
+      final healthScore = _calculateHealthScore(
+          activeAlerts, criticalAlerts, failedDeployments, recentDeployments);
+
       return '''
 🏥 System Health Report
 
 Overall Health: ${_getHealthStatus(healthScore)} ($healthScore/100)
 
 Security Status:
-• $activeAlerts active alerts (${criticalAlerts} critical)
+• $activeAlerts active alerts ($criticalAlerts critical)
 • ${alerts.length - activeAlerts} resolved alerts
 • Monitoring: Honeytokens, Config drift, Network anomalies
 
@@ -642,19 +677,20 @@ Last Updated: ${DateTime.now().toString().substring(0, 19)}
   }
 
   /// Calculate system health score
-  int _calculateHealthScore(int activeAlerts, int criticalAlerts, int failedDeployments, int recentDeployments) {
+  int _calculateHealthScore(int activeAlerts, int criticalAlerts,
+      int failedDeployments, int recentDeployments) {
     int score = 100;
-    
+
     // Deduct for active alerts
     score -= activeAlerts * 5;
     score -= criticalAlerts * 15;
-    
+
     // Deduct for failed deployments
     if (recentDeployments > 0) {
       final failureRate = (failedDeployments / recentDeployments * 100).round();
       score -= failureRate;
     }
-    
+
     return score.clamp(0, 100);
   }
 
@@ -671,7 +707,7 @@ Last Updated: ${DateTime.now().toString().substring(0, 19)}
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {

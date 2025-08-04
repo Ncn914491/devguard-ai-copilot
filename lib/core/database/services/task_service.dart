@@ -2,6 +2,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 import '../database_service.dart';
 import '../models/task.dart';
+import '../models/task_status_history.dart';
+import '../models/task_access_log.dart';
 import 'audit_log_service.dart';
 
 class TaskService {
@@ -19,21 +21,21 @@ class TaskService {
   Future<String> createTask(Task task) async {
     final db = await _db;
     final id = task.id.isEmpty ? _uuid.v4() : task.id;
-    
+
     final taskWithId = task.copyWith(
       id: id,
       createdAt: DateTime.now(),
     );
 
     await db.insert('tasks', taskWithId.toMap());
-    
+
     // Log the action for transparency (Requirement 9.1)
     await _auditService.logAction(
       actionType: 'task_created',
       description: 'Created task: ${task.title} (${task.type})',
       contextData: {
-        'task_id': id, 
-        'type': task.type, 
+        'task_id': id,
+        'type': task.type,
         'priority': task.priority,
         'assignee_id': task.assigneeId,
       },
@@ -109,7 +111,7 @@ class TaskService {
   /// Satisfies Requirements: 5.4 (Git issues/tasks sync with automatic updates)
   Future<void> updateTask(Task task) async {
     final db = await _db;
-    
+
     await db.update(
       'tasks',
       task.toMap(),
@@ -122,7 +124,7 @@ class TaskService {
       actionType: 'task_updated',
       description: 'Updated task: ${task.title} - Status: ${task.status}',
       contextData: {
-        'task_id': task.id, 
+        'task_id': task.id,
         'status': task.status,
         'assignee_id': task.assigneeId,
       },
@@ -131,7 +133,8 @@ class TaskService {
 
   /// Update task status
   /// Satisfies Requirements: 5.4 (Automatic progress tracking)
-  Future<void> updateTaskStatus(String taskId, String status, {String? userId}) async {
+  Future<void> updateTaskStatus(String taskId, String status,
+      {String? userId}) async {
     final task = await getTask(taskId);
     if (task == null) return;
 
@@ -146,7 +149,11 @@ class TaskService {
     await _auditService.logAction(
       actionType: 'task_status_updated',
       description: 'Task status changed: ${task.title} -> $status',
-      contextData: {'task_id': taskId, 'old_status': task.status, 'new_status': status},
+      contextData: {
+        'task_id': taskId,
+        'old_status': task.status,
+        'new_status': status
+      },
       userId: userId,
     );
   }
@@ -172,7 +179,8 @@ class TaskService {
 
   /// Update task assignment
   /// Satisfies Requirements: 5.2, 5.3 (Assignment updates with human approval)
-  Future<void> updateTaskAssignment(String taskId, String newAssigneeId, {String? approvedBy}) async {
+  Future<void> updateTaskAssignment(String taskId, String newAssigneeId,
+      {String? approvedBy}) async {
     final task = await getTask(taskId);
     if (task == null) return;
 
@@ -186,8 +194,8 @@ class TaskService {
       actionType: 'task_reassigned',
       description: 'Reassigned task: ${task.title}',
       contextData: {
-        'task_id': taskId, 
-        'old_assignee': oldAssigneeId, 
+        'task_id': taskId,
+        'old_assignee': oldAssigneeId,
         'new_assignee': newAssigneeId,
       },
       requiresApproval: true,
@@ -200,7 +208,7 @@ class TaskService {
   Future<void> deleteTask(String id) async {
     final db = await _db;
     final task = await getTask(id);
-    
+
     await db.delete(
       'tasks',
       where: 'id = ?',

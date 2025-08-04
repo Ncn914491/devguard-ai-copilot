@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/core/services/onboarding_service.dart';
-import '../lib/core/services/email_service.dart';
-import '../lib/core/auth/auth_service.dart';
-import '../lib/core/database/services/audit_log_service.dart';
+import 'package:devguard_ai_copilot/core/services/onboarding_service.dart';
+import 'package:devguard_ai_copilot/core/services/email_service.dart';
+import 'package:devguard_ai_copilot/core/auth/auth_service.dart';
+import 'package:devguard_ai_copilot/core/database/services/audit_log_service.dart';
 
 void main() {
   group('Onboarding Integration Tests', () {
@@ -78,7 +78,7 @@ void main() {
       // Mock admin authentication
       // In a real test, we would properly authenticate as admin
       // For now, we'll test the method exists and handles permissions
-      
+
       try {
         final requests = await onboardingService.getPendingRequests();
         // If we get here without exception, the method works
@@ -123,8 +123,9 @@ void main() {
       expect(submitResult.requestId, isNotNull);
 
       // Track the status
-      final status = await onboardingService.trackRequestStatus(submitResult.requestId!);
-      
+      final status =
+          await onboardingService.trackRequestStatus(submitResult.requestId!);
+
       expect(status, isNotNull);
       expect(status!.requestId, equals(submitResult.requestId));
       expect(status.status.toString(), contains('pending'));

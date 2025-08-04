@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../database/services/services.dart';
-import '../database/models/models.dart';
 
 /// GitHub API integration service for free tier usage
 /// Satisfies Requirements: 10.1, 10.2 (GitHub free tier integration)
@@ -14,11 +12,11 @@ class GitHubService {
 
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
-  
+
   String? _accessToken;
   String? _username;
   String? _repository;
-  
+
   static const String _baseUrl = 'https://api.github.com';
   static const Map<String, String> _headers = {
     'Accept': 'application/vnd.github.v3+json',
@@ -27,21 +25,24 @@ class GitHubService {
 
   /// Initialize GitHub integration with access token
   /// Satisfies Requirements: 11.2 (Authentication and authorization)
-  Future<void> initialize(String accessToken, String username, String repository) async {
+  Future<void> initialize(
+      String accessToken, String username, String repository) async {
     _accessToken = accessToken;
     _username = username;
     _repository = repository;
-    
+
     // Verify token and repository access
     final isValid = await _validateCredentials();
     if (!isValid) {
       throw Exception('Invalid GitHub credentials or repository access');
     }
-    
+
     await _auditService.logAction(
       actionType: 'github_integration_initialized',
-      description: 'GitHub integration initialized for repository: $username/$repository',
-      aiReasoning: 'Established secure connection to GitHub API for repository operations',
+      description:
+          'GitHub integration initialized for repository: $username/$repository',
+      aiReasoning:
+          'Established secure connection to GitHub API for repository operations',
       contextData: {
         'username': username,
         'repository': repository,
@@ -60,7 +61,7 @@ class GitHubService {
           'Authorization': 'token $_accessToken',
         },
       );
-      
+
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -93,7 +94,8 @@ class GitHubService {
       await _auditService.logAction(
         actionType: 'repository_cloned',
         description: 'Cloned repository: $_username/$_repository',
-        aiReasoning: 'Repository cloned for local development and DevGuard monitoring',
+        aiReasoning:
+            'Repository cloned for local development and DevGuard monitoring',
         contextData: {
           'repository_id': repository.id,
           'clone_url': repository.cloneUrl,
@@ -110,7 +112,8 @@ class GitHubService {
 
   /// Create a new branch
   /// Satisfies Requirements: 3.2 (Branch creation)
-  Future<GitHubBranch> createBranch(String branchName, String fromBranch) async {
+  Future<GitHubBranch> createBranch(
+      String branchName, String fromBranch) async {
     if (!_isInitialized()) {
       throw Exception('GitHub service not initialized');
     }
@@ -118,7 +121,8 @@ class GitHubService {
     try {
       // Get the SHA of the source branch
       final refResponse = await http.get(
-        Uri.parse('$_baseUrl/repos/$_username/$_repository/git/refs/heads/$fromBranch'),
+        Uri.parse(
+            '$_baseUrl/repos/$_username/$_repository/git/refs/heads/$fromBranch'),
         headers: {
           ..._headers,
           'Authorization': 'token $_accessToken',
@@ -147,7 +151,8 @@ class GitHubService {
       );
 
       if (createResponse.statusCode != 201) {
-        throw Exception('Failed to create branch: ${createResponse.statusCode}');
+        throw Exception(
+            'Failed to create branch: ${createResponse.statusCode}');
       }
 
       final branchData = jsonDecode(createResponse.body);
@@ -177,7 +182,8 @@ class GitHubService {
 
   /// Commit changes to repository
   /// Satisfies Requirements: 3.3 (Committing changes)
-  Future<GitHubCommit> createCommit(String branchName, String message, Map<String, String> files) async {
+  Future<GitHubCommit> createCommit(
+      String branchName, String message, Map<String, String> files) async {
     if (!_isInitialized()) {
       throw Exception('GitHub service not initialized');
     }
@@ -185,7 +191,8 @@ class GitHubService {
     try {
       // Get current branch reference
       final refResponse = await http.get(
-        Uri.parse('$_baseUrl/repos/$_username/$_repository/git/refs/heads/$branchName'),
+        Uri.parse(
+            '$_baseUrl/repos/$_username/$_repository/git/refs/heads/$branchName'),
         headers: {
           ..._headers,
           'Authorization': 'token $_accessToken',
@@ -201,7 +208,8 @@ class GitHubService {
 
       // Get current tree
       final treeResponse = await http.get(
-        Uri.parse('$_baseUrl/repos/$_username/$_repository/git/commits/$currentSha'),
+        Uri.parse(
+            '$_baseUrl/repos/$_username/$_repository/git/commits/$currentSha'),
         headers: {
           ..._headers,
           'Authorization': 'token $_accessToken',
@@ -283,7 +291,8 @@ class GitHubService {
 
       // Update branch reference
       await http.patch(
-        Uri.parse('$_baseUrl/repos/$_username/$_repository/git/refs/heads/$branchName'),
+        Uri.parse(
+            '$_baseUrl/repos/$_username/$_repository/git/refs/heads/$branchName'),
         headers: {
           ..._headers,
           'Authorization': 'token $_accessToken',
@@ -305,7 +314,8 @@ class GitHubService {
       await _auditService.logAction(
         actionType: 'github_commit_created',
         description: 'Created GitHub commit: ${commit.sha.substring(0, 7)}',
-        aiReasoning: 'Committed changes with structured message for traceability',
+        aiReasoning:
+            'Committed changes with structured message for traceability',
         contextData: {
           'commit_sha': commit.sha,
           'branch_name': branchName,
@@ -322,7 +332,8 @@ class GitHubService {
 
   /// Create pull request
   /// Satisfies Requirements: 3.4 (Creating pull requests)
-  Future<GitHubPullRequest> createPullRequest(String title, String body, String headBranch, String baseBranch) async {
+  Future<GitHubPullRequest> createPullRequest(
+      String title, String body, String headBranch, String baseBranch) async {
     if (!_isInitialized()) {
       throw Exception('GitHub service not initialized');
     }
@@ -344,7 +355,8 @@ class GitHubService {
       );
 
       if (response.statusCode != 201) {
-        throw Exception('Failed to create pull request: ${response.statusCode}');
+        throw Exception(
+            'Failed to create pull request: ${response.statusCode}');
       }
 
       final prData = jsonDecode(response.body);
@@ -378,7 +390,8 @@ class GitHubService {
 
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/repos/$_username/$_repository/issues?state=$state'),
+        Uri.parse(
+            '$_baseUrl/repos/$_username/$_repository/issues?state=$state'),
         headers: {
           ..._headers,
           'Authorization': 'token $_accessToken',
@@ -398,7 +411,8 @@ class GitHubService {
 
   /// Create issue from task
   /// Satisfies Requirements: 11.4 (Issue creation for workflow management)
-  Future<GitHubIssue> createIssue(String title, String body, {List<String>? labels}) async {
+  Future<GitHubIssue> createIssue(String title, String body,
+      {List<String>? labels}) async {
     if (!_isInitialized()) {
       throw Exception('GitHub service not initialized');
     }
@@ -443,6 +457,86 @@ class GitHubService {
     }
   }
 
+  /// Get repositories for authenticated user
+  /// Satisfies Requirements: 3.1 (Repository listing)
+  Future<List<GitHubRepository>> getRepositories(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/user/repos'),
+        headers: {
+          ..._headers,
+          'Authorization': 'token $accessToken',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch repositories: ${response.statusCode}');
+      }
+
+      final reposData = jsonDecode(response.body) as List;
+      return reposData.map((repo) => GitHubRepository.fromJson(repo)).toList();
+    } catch (e) {
+      throw Exception('Failed to get repositories: ${e.toString()}');
+    }
+  }
+
+  /// Create pull request with enhanced parameters
+  /// Satisfies Requirements: 3.4 (Creating pull requests with full API)
+  Future<GitHubPullRequest> createPullRequest({
+    required String accessToken,
+    required String repoOwner,
+    required String repoName,
+    required String title,
+    required String body,
+    required String head,
+    required String base,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/repos/$repoOwner/$repoName/pulls'),
+        headers: {
+          ..._headers,
+          'Authorization': 'token $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'title': title,
+          'body': body,
+          'head': head,
+          'base': base,
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception(
+            'Failed to create pull request: ${response.statusCode}');
+      }
+
+      final prData = jsonDecode(response.body);
+      final pullRequest = GitHubPullRequest.fromJson(prData);
+
+      await _auditService.logAction(
+        actionType: 'github_pull_request_created_api',
+        description:
+            'Created GitHub pull request via API: #${pullRequest.number}',
+        aiReasoning:
+            'Created pull request through external API call for repository integration',
+        contextData: {
+          'pr_number': pullRequest.number,
+          'title': title,
+          'head_branch': head,
+          'base_branch': base,
+          'repo': '$repoOwner/$repoName',
+          'url': pullRequest.htmlUrl,
+        },
+      );
+
+      return pullRequest;
+    } catch (e) {
+      throw Exception('Failed to create pull request: ${e.toString()}');
+    }
+  }
+
   /// Get integration status
   Future<GitHubIntegrationStatus> getIntegrationStatus() async {
     if (!_isInitialized()) {
@@ -467,7 +561,7 @@ class GitHubService {
 
       int rateLimitRemaining = 0;
       DateTime? rateLimitReset;
-      
+
       if (rateLimitResponse.statusCode == 200) {
         final rateLimitData = jsonDecode(rateLimitResponse.body);
         rateLimitRemaining = rateLimitData['rate']['remaining'];
@@ -624,9 +718,10 @@ class GitHubIssue {
 
   factory GitHubIssue.fromJson(Map<String, dynamic> json) {
     final labelsList = (json['labels'] as List?)
-        ?.map((label) => label['name'] as String)
-        .toList() ?? [];
-    
+            ?.map((label) => label['name'] as String)
+            .toList() ??
+        [];
+
     return GitHubIssue(
       number: json['number'],
       title: json['title'],

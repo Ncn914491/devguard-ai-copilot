@@ -17,7 +17,7 @@ class GitIntegration {
   final _specService = SpecService.instance;
   final _githubService = GitHubService.instance;
   final _gitlabService = GitLabService.instance;
-  
+
   String _gitProvider = 'github'; // 'github' or 'gitlab'
 
   /// Create git branch from approved specification
@@ -29,7 +29,8 @@ class GitIntegration {
     }
 
     if (spec.status != 'approved') {
-      throw Exception('Only approved specifications can be converted to branches');
+      throw Exception(
+          'Only approved specifications can be converted to branches');
     }
 
     final branchId = _uuid.v4();
@@ -49,7 +50,8 @@ class GitIntegration {
     await _auditService.logAction(
       actionType: 'git_branch_created',
       description: 'Created git branch: ${branch.name}',
-      aiReasoning: 'Automatically created git branch from approved specification for structured development workflow',
+      aiReasoning:
+          'Automatically created git branch from approved specification for structured development workflow',
       contextData: {
         'branch_id': branchId,
         'branch_name': branch.name,
@@ -63,7 +65,8 @@ class GitIntegration {
 
   /// Create commit from specification
   /// Satisfies Requirements: 8.3 (Commit creation with structured messages)
-  Future<GitCommit> createCommitFromSpec(String specId, String branchId, String changes) async {
+  Future<GitCommit> createCommitFromSpec(
+      String specId, String branchId, String changes) async {
     final spec = await _specService.getSpecification(specId);
     if (spec == null) {
       throw Exception('Specification not found: $specId');
@@ -71,7 +74,7 @@ class GitIntegration {
 
     final commitId = _uuid.v4();
     final commitHash = 'commit-${DateTime.now().millisecondsSinceEpoch}';
-    
+
     final commit = GitCommit(
       id: commitId,
       hash: commitHash,
@@ -96,7 +99,8 @@ class GitIntegration {
     await _auditService.logAction(
       actionType: 'git_commit_created',
       description: 'Created git commit: ${commit.hash}',
-      aiReasoning: 'Generated structured commit from specification with conventional commit format',
+      aiReasoning:
+          'Generated structured commit from specification with conventional commit format',
       contextData: {
         'commit_id': commitId,
         'commit_hash': commitHash,
@@ -111,23 +115,32 @@ class GitIntegration {
 
   /// Create task from specification for tracking
   /// Satisfies Requirements: 8.4 (Task-commit linking)
-  Future<void> _createTaskFromSpec(Specification spec, String commitHash) async {
+  Future<void> _createTaskFromSpec(
+      Specification spec, String commitHash) async {
     // Check if task already exists for this spec
     final existingTasks = await _taskService.getAllTasks();
-    final specTask = existingTasks.where((t) => t.relatedCommits.contains(commitHash)).firstOrNull;
-    
+    final specTask = existingTasks
+        .where((t) => t.relatedCommits.contains(commitHash))
+        .firstOrNull;
+
     if (specTask == null) {
       final task = Task(
         id: _uuid.v4(),
-        title: spec.suggestedBranchName.replaceAll('feature/', '').replaceAll('-', ' '),
+        title: spec.suggestedBranchName
+            .replaceAll('feature/', '')
+            .replaceAll('-', ' '),
         description: spec.aiInterpretation,
         type: _inferTaskType(spec.aiInterpretation),
         priority: 'medium',
         status: 'in_progress',
         assigneeId: spec.assignedTo ?? 'unassigned',
+        reporterId: 'system',
         estimatedHours: _estimateHours(spec.aiInterpretation),
         actualHours: 0,
         relatedCommits: [commitHash],
+        relatedPullRequests: [],
+        dependencies: [],
+        blockedBy: [],
         dependencies: [],
         createdAt: DateTime.now(),
         dueDate: DateTime.now().add(const Duration(days: 7)),
@@ -161,16 +174,18 @@ class GitIntegration {
 
   /// Create pull request from branch
   /// Satisfies Requirements: 8.5 (PR creation with documentation)
-  Future<GitPullRequest> createPullRequest(String branchId, String targetBranch) async {
+  Future<GitPullRequest> createPullRequest(
+      String branchId, String targetBranch) async {
     final prId = _uuid.v4();
-    
+
     // Simulate PR creation
     await Future.delayed(const Duration(seconds: 1));
-    
+
     final pr = GitPullRequest(
       id: prId,
       title: 'Auto-generated PR from DevGuard AI Copilot',
-      description: 'This pull request was automatically generated from an approved specification.',
+      description:
+          'This pull request was automatically generated from an approved specification.',
       branchId: branchId,
       targetBranch: targetBranch,
       status: 'open',
@@ -193,7 +208,8 @@ class GitIntegration {
 
   /// Sync task status with git state
   /// Satisfies Requirements: 8.4 (Task-git synchronization)
-  Future<void> syncTaskWithGitState(String taskId, String commitHash, String gitStatus) async {
+  Future<void> syncTaskWithGitState(
+      String taskId, String commitHash, String gitStatus) async {
     final task = await _taskService.getTask(taskId);
     if (task == null) return;
 
@@ -214,11 +230,12 @@ class GitIntegration {
 
     if (newStatus != task.status) {
       await _taskService.updateTaskStatus(taskId, newStatus);
-      
+
       // Log sync
       await _auditService.logAction(
         actionType: 'task_git_sync',
-        description: 'Synced task status with git state: $gitStatus -> $newStatus',
+        description:
+            'Synced task status with git state: $gitStatus -> $newStatus',
         contextData: {
           'task_id': taskId,
           'commit_hash': commitHash,
@@ -231,9 +248,10 @@ class GitIntegration {
 
   /// Initialize git provider integration
   /// Satisfies Requirements: 11.1, 11.2 (GitHub/GitLab integration setup)
-  Future<void> initializeGitProvider(String provider, Map<String, String> credentials) async {
+  Future<void> initializeGitProvider(
+      String provider, Map<String, String> credentials) async {
     _gitProvider = provider.toLowerCase();
-    
+
     try {
       if (_gitProvider == 'github') {
         await _githubService.initialize(
@@ -250,18 +268,20 @@ class GitIntegration {
       } else {
         throw Exception('Unsupported git provider: $provider');
       }
-      
+
       await _auditService.logAction(
         actionType: 'git_provider_initialized',
         description: 'Initialized $provider integration',
-        aiReasoning: 'Connected to external git provider for repository operations',
+        aiReasoning:
+            'Connected to external git provider for repository operations',
         contextData: {
           'provider': provider,
           'repository': credentials['repository'] ?? credentials['project_id'],
         },
       );
     } catch (e) {
-      throw Exception('Failed to initialize $provider integration: ${e.toString()}');
+      throw Exception(
+          'Failed to initialize $provider integration: ${e.toString()}');
     }
   }
 
@@ -275,9 +295,10 @@ class GitIntegration {
 
     try {
       final branchName = spec.suggestedBranchName;
-      
+
       if (_gitProvider == 'github') {
-        final githubBranch = await _githubService.createBranch(branchName, fromBranch);
+        final githubBranch =
+            await _githubService.createBranch(branchName, fromBranch);
         return GitBranch(
           id: _uuid.v4(),
           name: githubBranch.name,
@@ -287,7 +308,8 @@ class GitIntegration {
           commits: [],
         );
       } else if (_gitProvider == 'gitlab') {
-        final gitlabBranch = await _gitlabService.createBranch(branchName, fromBranch);
+        final gitlabBranch =
+            await _gitlabService.createBranch(branchName, fromBranch);
         return GitBranch(
           id: _uuid.v4(),
           name: gitlabBranch.name,
@@ -306,7 +328,8 @@ class GitIntegration {
 
   /// Create remote commit using configured git provider
   /// Satisfies Requirements: 11.3 (Remote commit creation)
-  Future<GitCommit> createRemoteCommit(String specId, String branchName, Map<String, String> files) async {
+  Future<GitCommit> createRemoteCommit(
+      String specId, String branchName, Map<String, String> files) async {
     final spec = await _specService.getSpecification(specId);
     if (spec == null) {
       throw Exception('Specification not found: $specId');
@@ -314,9 +337,10 @@ class GitIntegration {
 
     try {
       final commitMessage = spec.suggestedCommitMessage;
-      
+
       if (_gitProvider == 'github') {
-        final githubCommit = await _githubService.createCommit(branchName, commitMessage, files);
+        final githubCommit =
+            await _githubService.createCommit(branchName, commitMessage, files);
         return GitCommit(
           id: _uuid.v4(),
           hash: githubCommit.sha,
@@ -328,7 +352,8 @@ class GitIntegration {
           createdAt: githubCommit.date,
         );
       } else if (_gitProvider == 'gitlab') {
-        final gitlabCommit = await _gitlabService.createCommit(branchName, commitMessage, files);
+        final gitlabCommit =
+            await _gitlabService.createCommit(branchName, commitMessage, files);
         return GitCommit(
           id: _uuid.v4(),
           hash: gitlabCommit.id,
@@ -349,10 +374,12 @@ class GitIntegration {
 
   /// Create remote pull/merge request using configured git provider
   /// Satisfies Requirements: 11.3 (Remote PR/MR creation)
-  Future<GitPullRequest> createRemotePullRequest(String branchName, String targetBranch, String title, String description) async {
+  Future<GitPullRequest> createRemotePullRequest(String branchName,
+      String targetBranch, String title, String description) async {
     try {
       if (_gitProvider == 'github') {
-        final githubPR = await _githubService.createPullRequest(title, description, branchName, targetBranch);
+        final githubPR = await _githubService.createPullRequest(
+            title, description, branchName, targetBranch);
         return GitPullRequest(
           id: _uuid.v4(),
           title: githubPR.title,
@@ -363,7 +390,8 @@ class GitIntegration {
           createdAt: githubPR.createdAt,
         );
       } else if (_gitProvider == 'gitlab') {
-        final gitlabMR = await _gitlabService.createMergeRequest(title, description, branchName, targetBranch);
+        final gitlabMR = await _gitlabService.createMergeRequest(
+            title, description, branchName, targetBranch);
         return GitPullRequest(
           id: _uuid.v4(),
           title: gitlabMR.title,
@@ -377,7 +405,8 @@ class GitIntegration {
         throw Exception('No git provider configured');
       }
     } catch (e) {
-      throw Exception('Failed to create remote pull/merge request: ${e.toString()}');
+      throw Exception(
+          'Failed to create remote pull/merge request: ${e.toString()}');
     }
   }
 
@@ -386,7 +415,7 @@ class GitIntegration {
   Future<void> syncIssuesWithTasks() async {
     try {
       List<dynamic> issues = [];
-      
+
       if (_gitProvider == 'github') {
         issues = await _githubService.getRepositoryIssues();
       } else if (_gitProvider == 'gitlab') {
@@ -397,40 +426,44 @@ class GitIntegration {
 
       // Sync issues with existing tasks
       final tasks = await _taskService.getAllTasks();
-      
+
       for (final issue in issues) {
-        final issueTitle = _gitProvider == 'github' 
-            ? (issue as GitHubIssue).title 
+        final issueTitle = _gitProvider == 'github'
+            ? (issue as GitHubIssue).title
             : (issue as GitLabIssue).title;
-        final issueNumber = _gitProvider == 'github' 
-            ? (issue as GitHubIssue).number 
+        final issueNumber = _gitProvider == 'github'
+            ? (issue as GitHubIssue).number
             : (issue as GitLabIssue).iid;
-        
+
         // Check if task exists for this issue
-        final existingTask = tasks.where((t) => t.title.contains(issueTitle)).firstOrNull;
-        
+        final existingTask =
+            tasks.where((t) => t.title.contains(issueTitle)).firstOrNull;
+
         if (existingTask == null) {
           // Create new task from issue
           final task = Task(
             id: _uuid.v4(),
             title: issueTitle,
-            description: _gitProvider == 'github' 
-                ? (issue as GitHubIssue).body 
+            description: _gitProvider == 'github'
+                ? (issue as GitHubIssue).body
                 : (issue as GitLabIssue).description,
             type: 'feature',
             priority: 'medium',
             status: 'pending',
             assigneeId: 'unassigned',
+            reporterId: 'system',
             estimatedHours: 4,
             actualHours: 0,
             relatedCommits: [],
+            relatedPullRequests: [],
             dependencies: [],
+            blockedBy: [],
             createdAt: DateTime.now(),
             dueDate: DateTime.now().add(const Duration(days: 7)),
           );
-          
+
           await _taskService.createTask(task);
-          
+
           await _auditService.logAction(
             actionType: 'task_created_from_issue',
             description: 'Created task from $_gitProvider issue #$issueNumber',
@@ -461,15 +494,17 @@ class GitIntegration {
 
     try {
       final labels = [task.type, task.priority];
-      
+
       if (_gitProvider == 'github') {
-        await _githubService.createIssue(task.title, task.description, labels: labels);
+        await _githubService.createIssue(task.title, task.description,
+            labels: labels);
       } else if (_gitProvider == 'gitlab') {
-        await _gitlabService.createIssue(task.title, task.description, labels: labels);
+        await _gitlabService.createIssue(task.title, task.description,
+            labels: labels);
       } else {
         throw Exception('No git provider configured');
       }
-      
+
       await _auditService.logAction(
         actionType: 'issue_created_from_task',
         description: 'Created $_gitProvider issue from task: ${task.title}',
@@ -530,7 +565,8 @@ class GitIntegration {
   }
 
   /// Initialize a new git repository
-  Future<void> initializeRepository(String path, Map<String, String> initialFiles) async {
+  Future<void> initializeRepository(
+      String path, Map<String, String> initialFiles) async {
     // Implementation would create git repository and add initial files
     await _auditService.logAction(
       actionType: 'git_repository_initialized',

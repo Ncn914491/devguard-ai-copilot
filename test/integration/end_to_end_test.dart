@@ -235,7 +235,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Simulate network error
-      await tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('flutter/platform'),
         (MethodCall methodCall) async {
           if (methodCall.method == 'SystemChrome.setApplicationSwitcherDescription') {
@@ -258,7 +258,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Clean up mock
-      await tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('flutter/platform'),
         null,
       );
@@ -283,7 +283,7 @@ void main() {
       expect(find.byType(NavigationRail), findsOneWidget);
 
       // Reset to default size
-      await tester.binding.window.clearPhysicalSizeTestValue();
+      tester.binding.window.clearPhysicalSizeTestValue();
     });
 
     testWidgets('Performance Under Load', (WidgetTester tester) async {

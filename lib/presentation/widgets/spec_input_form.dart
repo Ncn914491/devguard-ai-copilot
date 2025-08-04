@@ -18,7 +18,7 @@ class _SpecInputFormState extends State<SpecInputForm> {
   final _formKey = GlobalKey<FormState>();
   final _inputController = TextEditingController();
   final _specService = SpecService.instance;
-  
+
   bool _isProcessing = false;
   Specification? _processedSpec;
   ValidationResult? _validationResult;
@@ -33,11 +33,12 @@ class _SpecInputFormState extends State<SpecInputForm> {
     if (_inputController.text.trim().isEmpty) return;
 
     setState(() => _isProcessing = true);
-    
+
     try {
-      final validation = await _specService.validateSpecification(_inputController.text.trim());
+      final validation = await _specService
+          .validateSpecification(_inputController.text.trim());
       setState(() => _validationResult = validation);
-      
+
       if (validation.isValid) {
         await _processSpecification();
       }
@@ -54,13 +55,13 @@ class _SpecInputFormState extends State<SpecInputForm> {
 
   Future<void> _processSpecification() async {
     setState(() => _isProcessing = true);
-    
+
     try {
       final spec = await _specService.processSpecification(
         _inputController.text.trim(),
         userId: 'current_user', // TODO: Get from auth context
       );
-      
+
       setState(() => _processedSpec = spec);
     } catch (e) {
       if (mounted) {
@@ -81,16 +82,16 @@ class _SpecInputFormState extends State<SpecInputForm> {
         _processedSpec!.id,
         'current_user', // TODO: Get from auth context
       );
-      
+
       widget.onSpecificationCreated(_processedSpec!);
-      
+
       // Reset form
       _inputController.clear();
       setState(() {
         _processedSpec = null;
         _validationResult = null;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Specification approved and saved!')),
@@ -129,23 +130,26 @@ class _SpecInputFormState extends State<SpecInputForm> {
                   Text(
                     'Natural Language Specification',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Describe what you want to implement in natural language. The AI will convert it into structured git actions.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    ),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
+                        ),
                   ),
                   const SizedBox(height: 16),
-                  
                   TextFormField(
                     controller: _inputController,
                     maxLines: 6,
                     decoration: const InputDecoration(
-                      hintText: 'Example: "Add user authentication with email and password, including login and registration forms with validation"',
+                      hintText:
+                          'Example: "Add user authentication with email and password, including login and registration forms with validation"',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
@@ -158,21 +162,22 @@ class _SpecInputFormState extends State<SpecInputForm> {
                       return null;
                     },
                   ),
-                  
                   const SizedBox(height: 16),
-                  
                   Row(
                     children: [
                       ElevatedButton.icon(
                         onPressed: _isProcessing ? null : _validateInput,
-                        icon: _isProcessing 
+                        icon: _isProcessing
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.auto_awesome),
-                        label: Text(_isProcessing ? 'Processing...' : 'Process with AI'),
+                        label: Text(_isProcessing
+                            ? 'Processing...'
+                            : 'Process with AI'),
                       ),
                       if (_processedSpec != null) ...[
                         const SizedBox(width: 12),
@@ -209,41 +214,51 @@ class _SpecInputFormState extends State<SpecInputForm> {
                         const SizedBox(width: 8),
                         Text(
                           'Validation Issues',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onErrorContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     ...(_validationResult!.issues.map((issue) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        '• $issue',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ))),
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            '• $issue',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                            ),
+                          ),
+                        ))),
                     if (_validationResult!.suggestions.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         'Suggestions:',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
-                      ...(_validationResult!.suggestions.map((suggestion) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '• $suggestion',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ))),
+                      ...(_validationResult!.suggestions
+                          .map((suggestion) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  '• $suggestion',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                  ),
+                                ),
+                              ))),
                     ],
                   ],
                 ),
@@ -269,9 +284,10 @@ class _SpecInputFormState extends State<SpecInputForm> {
                         const SizedBox(width: 8),
                         Text(
                           'AI Processing Results',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                       ],
                     ),
@@ -368,9 +384,9 @@ class _SpecInputFormState extends State<SpecInputForm> {
             Text(
               title,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ],
         ),
@@ -379,14 +395,17 @@ class _SpecInputFormState extends State<SpecInputForm> {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             content,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontFamily: title.contains('Branch') || title.contains('Commit') ? 'monospace' : null,
-            ),
+                  fontFamily:
+                      title.contains('Branch') || title.contains('Commit')
+                          ? 'monospace'
+                          : null,
+                ),
           ),
         ),
       ],

@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../database/services/services.dart';
-import '../database/models/models.dart';
 
 /// GitLab API integration service for free tier usage
 /// Satisfies Requirements: 10.1, 10.2 (GitLab free tier integration)
@@ -14,11 +12,11 @@ class GitLabService {
 
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
-  
+
   String? _accessToken;
   String? _projectId;
   String? _baseUrl;
-  
+
   static const Map<String, String> _headers = {
     'Content-Type': 'application/json',
     'User-Agent': 'DevGuard-AI-Copilot/1.0',
@@ -26,21 +24,23 @@ class GitLabService {
 
   /// Initialize GitLab integration with access token
   /// Satisfies Requirements: 11.2 (Authentication and authorization)
-  Future<void> initialize(String accessToken, String projectId, {String baseUrl = 'https://gitlab.com'}) async {
+  Future<void> initialize(String accessToken, String projectId,
+      {String baseUrl = 'https://gitlab.com'}) async {
     _accessToken = accessToken;
     _projectId = projectId;
     _baseUrl = baseUrl;
-    
+
     // Verify token and project access
     final isValid = await _validateCredentials();
     if (!isValid) {
       throw Exception('Invalid GitLab credentials or project access');
     }
-    
+
     await _auditService.logAction(
       actionType: 'gitlab_integration_initialized',
       description: 'GitLab integration initialized for project: $projectId',
-      aiReasoning: 'Established secure connection to GitLab API for repository operations',
+      aiReasoning:
+          'Established secure connection to GitLab API for repository operations',
       contextData: {
         'project_id': projectId,
         'base_url': baseUrl,
@@ -59,7 +59,7 @@ class GitLabService {
           'PRIVATE-TOKEN': _accessToken!,
         },
       );
-      
+
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -92,7 +92,8 @@ class GitLabService {
       await _auditService.logAction(
         actionType: 'gitlab_project_accessed',
         description: 'Accessed GitLab project: ${project.name}',
-        aiReasoning: 'Project accessed for DevGuard monitoring and development workflow',
+        aiReasoning:
+            'Project accessed for DevGuard monitoring and development workflow',
         contextData: {
           'project_id': project.id,
           'project_name': project.name,
@@ -110,7 +111,8 @@ class GitLabService {
 
   /// Create a new branch
   /// Satisfies Requirements: 3.2 (Branch creation)
-  Future<GitLabBranch> createBranch(String branchName, String fromBranch) async {
+  Future<GitLabBranch> createBranch(
+      String branchName, String fromBranch) async {
     if (!_isInitialized()) {
       throw Exception('GitLab service not initialized');
     }
@@ -154,17 +156,20 @@ class GitLabService {
 
   /// Create commit with file changes
   /// Satisfies Requirements: 3.3 (Committing changes)
-  Future<GitLabCommit> createCommit(String branchName, String message, Map<String, String> files) async {
+  Future<GitLabCommit> createCommit(
+      String branchName, String message, Map<String, String> files) async {
     if (!_isInitialized()) {
       throw Exception('GitLab service not initialized');
     }
 
     try {
-      final actions = files.entries.map((entry) => {
-        'action': 'create',
-        'file_path': entry.key,
-        'content': entry.value,
-      }).toList();
+      final actions = files.entries
+          .map((entry) => {
+                'action': 'create',
+                'file_path': entry.key,
+                'content': entry.value,
+              })
+          .toList();
 
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v4/projects/$_projectId/repository/commits'),
@@ -189,7 +194,8 @@ class GitLabService {
       await _auditService.logAction(
         actionType: 'gitlab_commit_created',
         description: 'Created GitLab commit: ${commit.shortId}',
-        aiReasoning: 'Committed changes with structured message for traceability',
+        aiReasoning:
+            'Committed changes with structured message for traceability',
         contextData: {
           'commit_id': commit.id,
           'branch_name': branchName,
@@ -206,7 +212,8 @@ class GitLabService {
 
   /// Create merge request (GitLab's equivalent of pull request)
   /// Satisfies Requirements: 3.4 (Creating merge requests)
-  Future<GitLabMergeRequest> createMergeRequest(String title, String description, String sourceBranch, String targetBranch) async {
+  Future<GitLabMergeRequest> createMergeRequest(String title,
+      String description, String sourceBranch, String targetBranch) async {
     if (!_isInitialized()) {
       throw Exception('GitLab service not initialized');
     }
@@ -227,7 +234,8 @@ class GitLabService {
       );
 
       if (response.statusCode != 201) {
-        throw Exception('Failed to create merge request: ${response.statusCode}');
+        throw Exception(
+            'Failed to create merge request: ${response.statusCode}');
       }
 
       final mrData = jsonDecode(response.body);
@@ -281,7 +289,8 @@ class GitLabService {
 
   /// Create issue from task
   /// Satisfies Requirements: 11.4 (Issue creation for workflow management)
-  Future<GitLabIssue> createIssue(String title, String description, {List<String>? labels}) async {
+  Future<GitLabIssue> createIssue(String title, String description,
+      {List<String>? labels}) async {
     if (!_isInitialized()) {
       throw Exception('GitLab service not initialized');
     }
@@ -349,7 +358,7 @@ class GitLabService {
 
       final connected = response.statusCode == 200;
       String? projectName;
-      
+
       if (connected) {
         final projectData = jsonDecode(response.body);
         projectName = projectData['path_with_namespace'];
@@ -533,10 +542,10 @@ class GitLabIssue {
   });
 
   factory GitLabIssue.fromJson(Map<String, dynamic> json) {
-    final labelsList = (json['labels'] as List?)
-        ?.map((label) => label.toString())
-        .toList() ?? [];
-    
+    final labelsList =
+        (json['labels'] as List?)?.map((label) => label.toString()).toList() ??
+            [];
+
     return GitLabIssue(
       id: json['id'],
       iid: json['iid'],

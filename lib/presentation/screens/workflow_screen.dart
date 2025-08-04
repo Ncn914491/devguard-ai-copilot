@@ -11,10 +11,11 @@ class WorkflowScreen extends StatefulWidget {
   State<WorkflowScreen> createState() => _WorkflowScreenState();
 }
 
-class _WorkflowScreenState extends State<WorkflowScreen> with TickerProviderStateMixin {
+class _WorkflowScreenState extends State<WorkflowScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   final _specService = SpecService.instance;
-  
+
   List<Specification> _specifications = [];
   bool _isLoading = false;
 
@@ -55,7 +56,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
         children: [
           // Header
@@ -82,16 +83,20 @@ class _WorkflowScreenState extends State<WorkflowScreen> with TickerProviderStat
                   children: [
                     Text(
                       'AI Workflow Assistant',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                     ),
                     Text(
                       'Convert natural language specifications into structured git actions',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      ),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.7),
+                          ),
                     ),
                   ],
                 ),
@@ -122,7 +127,8 @@ class _WorkflowScreenState extends State<WorkflowScreen> with TickerProviderStat
                 ),
               ],
               labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              unselectedLabelColor:
+                  Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               indicatorColor: Theme.of(context).colorScheme.primary,
             ),
           ),

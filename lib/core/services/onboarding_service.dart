@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 import '../models/join_request.dart';
 import '../database/services/audit_log_service.dart';
+import '../database/services/join_request_service.dart';
+import '../database/services/user_service.dart';
 import '../auth/auth_service.dart';
 import 'email_service.dart';
 
@@ -13,14 +15,12 @@ class OnboardingService {
 
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
+  final _joinRequestService = JoinRequestService.instance;
+  final _userService = UserService.instance;
   final _authService = AuthService.instance;
   final _emailService = EmailService.instance;
-  
-  // In-memory storage for demo purposes
-  // In production, this would be stored in database
-  final List<JoinRequest> _joinRequests = [];
-  
-  final StreamController<List<JoinRequest>> _requestsController = 
+
+  final StreamController<List<JoinRequest>> _requestsController =
       StreamController<List<JoinRequest>>.broadcast();
 
   /// Stream of join requests for real-time updates
@@ -31,9 +31,10 @@ class OnboardingService {
     await _auditService.logAction(
       actionType: 'onboarding_service_initialized',
       description: 'Onboarding service initialized',
-      aiReasoning: 'Onboarding service manages member join requests and approval workflows',
+      aiReasoning:
+          'Onboarding service manages member join requests and approval workflows',
       contextData: {
-        'pending_requests': _joinRequests.where((r) => r.status == JoinRequestStatus.pending).length,
+        'service_type': 'database_backed',
       },
     );
   }
@@ -47,23 +48,28 @@ class OnboardingService {
   }) async {
     try {
       // Validate input
-      if (name.trim().isEmpty || email.trim().isEmpty || requestedRole.trim().isEmpty) {
+      if (name.trim().isEmpty ||
+          email.trim().isEmpty ||
+          requestedRole.trim().isEmpty) {
         return RequestResult(
           success: false,
           message: 'All required fields must be filled',
         );
       }
 
-      // Check if email already exists
-      if (_joinRequests.any((r) => r.email.toLowerCase() == email.toLowerCase())) {
+      // Check if email already has a pending request
+      final existingRequest =
+          await _joinRequestService.getJoinRequestByEmail(email);
+      if (existingRequest != null &&
+          existingRequest.status == JoinRequestStatus.pending) {
         return RequestResult(
           success: false,
-          message: 'A request with this email already exists',
+          message: 'A pending request with this email already exists',
         );
       }
 
       // Check if user already exists
-      final existingUser = await _authService.findUserByEmail(email);
+      final existingUser = await _userService.getUserByEmail(email);
       if (existingUser != null) {
         return RequestResult(
           success: false,
@@ -82,30 +88,19 @@ class OnboardingService {
         createdAt: DateTime.now(),
       );
 
-      // Store request
-      _joinRequests.add(request);
-      _requestsController.add(List.from(_joinRequests));
+      // Store request in database
+      await _joinRequestService.createJoinRequest(request);
 
-      // Log action
-      await _auditService.logAction(
-        actionType: 'join_request_submitted',
-        description: 'New join request submitted',
-        aiReasoning: 'User submitted request to join project with specified role',
-        contextData: {
-          'request_id': request.id,
-          'name': request.name,
-          'email': request.email,
-          'requested_role': request.requestedRole,
-          'has_message': request.message != null,
-        },
-      );
+      // Notify listeners
+      final allRequests = await _joinRequestService.getJoinRequests();
+      _requestsController.add(allRequests);
 
       return RequestResult(
         success: true,
-        message: 'Join request submitted successfully. An admin will review your request.',
+        message:
+            'Join request submitted successfully. An admin will review your request.',
         requestId: request.id,
       );
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'join_request_error',
@@ -130,10 +125,7 @@ class OnboardingService {
       throw Exception('Insufficient permissions to view join requests');
     }
 
-    final pendingRequests = _joinRequests
-        .where((r) => r.status == JoinRequestStatus.pending)
-        .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final pendingRequests = await _joinRequestService.getPendingRequests();
 
     await _auditService.logAction(
       actionType: 'join_requests_viewed',
@@ -154,9 +146,7 @@ class OnboardingService {
       throw Exception('Insufficient permissions to view join requests');
     }
 
-    final allRequests = List<JoinRequest>.from(_joinRequests)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
+    final allRequests = await _joinRequestService.getJoinRequests();
     return allRequests;
   }
 
@@ -168,36 +158,37 @@ class OnboardingService {
         throw Exception('Insufficient permissions to approve join requests');
       }
 
-      // Find request
-      final requestIndex = _joinRequests.indexWhere((r) => r.id == requestId);
-      if (requestIndex == -1) {
+      // Get request from database
+      final request = await _joinRequestService.getJoinRequest(requestId);
+      if (request == null) {
         throw Exception('Join request not found');
       }
 
-      final request = _joinRequests[requestIndex];
       if (request.status != JoinRequestStatus.pending) {
         throw Exception('Request has already been processed');
       }
 
-      // Update request status
-      final updatedRequest = request.copyWith(
-        status: JoinRequestStatus.approved,
-        reviewedAt: DateTime.now(),
-        reviewedBy: _authService.currentUser?.id,
+      // Approve request in database
+      await _joinRequestService.approveJoinRequest(
+        requestId,
+        _authService.currentUser!.id,
         adminNotes: adminNotes,
       );
 
-      _joinRequests[requestIndex] = updatedRequest;
-      _requestsController.add(List.from(_joinRequests));
-
       // Create user account
       final temporaryPassword = _generateTemporaryPassword();
-      final newUser = await _authService.createUser(
+      final newUser = User(
+        id: _uuid.v4(),
         email: request.email,
         name: request.name,
-        password: temporaryPassword,
         role: request.requestedRole,
+        status: 'active',
+        passwordHash: _hashPassword(temporaryPassword),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
+
+      await _userService.createUser(newUser);
 
       // Send approval email with credentials
       final emailSent = await _emailService.sendApprovalEmail(
@@ -212,7 +203,8 @@ class OnboardingService {
       await _auditService.logAction(
         actionType: 'join_request_approved',
         description: 'Join request approved and user account created',
-        aiReasoning: 'Admin approved join request and system created user account',
+        aiReasoning:
+            'Admin approved join request and system created user account',
         contextData: {
           'request_id': requestId,
           'approved_user_id': newUser.id,
@@ -223,6 +215,10 @@ class OnboardingService {
         userId: _authService.currentUser?.id,
       );
 
+      // Notify listeners
+      final allRequests = await _joinRequestService.getJoinRequests();
+      _requestsController.add(allRequests);
+
       if (!emailSent) {
         // If email failed, still show credentials in console for demo
         print('⚠️  Email delivery failed, showing credentials in console:');
@@ -231,7 +227,6 @@ class OnboardingService {
       }
 
       return true;
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'join_request_approval_error',
@@ -255,27 +250,22 @@ class OnboardingService {
         throw Exception('Insufficient permissions to reject join requests');
       }
 
-      // Find request
-      final requestIndex = _joinRequests.indexWhere((r) => r.id == requestId);
-      if (requestIndex == -1) {
+      // Get request from database
+      final request = await _joinRequestService.getJoinRequest(requestId);
+      if (request == null) {
         throw Exception('Join request not found');
       }
 
-      final request = _joinRequests[requestIndex];
       if (request.status != JoinRequestStatus.pending) {
         throw Exception('Request has already been processed');
       }
 
-      // Update request status
-      final updatedRequest = request.copyWith(
-        status: JoinRequestStatus.rejected,
-        reviewedAt: DateTime.now(),
-        reviewedBy: _authService.currentUser?.id,
-        rejectionReason: reason,
+      // Reject request in database
+      await _joinRequestService.rejectJoinRequest(
+        requestId,
+        _authService.currentUser!.id,
+        reason,
       );
-
-      _joinRequests[requestIndex] = updatedRequest;
-      _requestsController.add(List.from(_joinRequests));
 
       // Send rejection email
       final emailSent = await _emailService.sendRejectionEmail(
@@ -297,13 +287,16 @@ class OnboardingService {
         userId: _authService.currentUser?.id,
       );
 
+      // Notify listeners
+      final allRequests = await _joinRequestService.getJoinRequests();
+      _requestsController.add(allRequests);
+
       if (!emailSent) {
         print('⚠️  Email delivery failed for rejection notification');
       }
       print('✓ Join request rejected for ${request.email}');
 
       return true;
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'join_request_rejection_error',
@@ -321,10 +314,10 @@ class OnboardingService {
 
   /// Track request status
   Future<RequestStatus?> trackRequestStatus(String requestId) async {
-    final request = _joinRequests.firstWhere(
-      (r) => r.id == requestId,
-      orElse: () => throw Exception('Request not found'),
-    );
+    final request = await _joinRequestService.getJoinRequest(requestId);
+    if (request == null) {
+      throw Exception('Request not found');
+    }
 
     return RequestStatus(
       requestId: requestId,
@@ -347,19 +340,82 @@ class OnboardingService {
 
   String _generateTemporaryPassword() {
     // Generate a secure temporary password
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*';
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*';
     final random = DateTime.now().millisecondsSinceEpoch;
     var password = '';
-    
+
     for (int i = 0; i < 12; i++) {
       password += chars[(random + i) % chars.length];
     }
-    
+
     return password;
+  }
+
+  String _hashPassword(String password) {
+    // Use the same hashing method as UserService
+    return _userService.hashPassword(password);
   }
 
   /// Dispose resources
   void dispose() {
     _requestsController.close();
+  }
+}
+
+/// User model for database operations
+class User {
+  final String id;
+  final String email;
+  final String name;
+  final String role;
+  final String status;
+  final String passwordHash;
+  final String? githubUsername;
+  final String? avatarUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? lastLogin;
+
+  User({
+    required this.id,
+    required this.email,
+    required this.name,
+    required this.role,
+    required this.status,
+    required this.passwordHash,
+    this.githubUsername,
+    this.avatarUrl,
+    required this.createdAt,
+    required this.updatedAt,
+    this.lastLogin,
+  });
+
+  User copyWith({
+    String? id,
+    String? email,
+    String? name,
+    String? role,
+    String? status,
+    String? passwordHash,
+    String? githubUsername,
+    String? avatarUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? lastLogin,
+  }) {
+    return User(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      status: status ?? this.status,
+      passwordHash: passwordHash ?? this.passwordHash,
+      githubUsername: githubUsername ?? this.githubUsername,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastLogin: lastLogin ?? this.lastLogin,
+    );
   }
 }

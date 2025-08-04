@@ -18,10 +18,11 @@ class RollbackController {
   /// Satisfies Requirements: 7.2 (Rollback options with security anomaly triggers)
   Future<List<RollbackOption>> getRollbackOptions(String environment) async {
     final snapshots = await _snapshotService.getRollbackOptions(environment);
-    final deployments = await _deploymentService.getDeploymentsByEnvironment(environment);
-    
+    final deployments =
+        await _deploymentService.getDeploymentsByEnvironment(environment);
+
     final options = <RollbackOption>[];
-    
+
     for (final snapshot in snapshots) {
       // Find corresponding deployment
       final deployment = deployments.firstWhere(
@@ -47,7 +48,8 @@ class RollbackController {
         createdAt: snapshot.createdAt,
         verified: snapshot.verified,
         description: _generateRollbackDescription(snapshot, deployment),
-        aiReasoning: await _generateRollbackReasoning(snapshot, 'Rollback option for ${deployment.version}'),
+        aiReasoning: await _generateRollbackReasoning(
+            snapshot, 'Rollback option for ${deployment.version}'),
       ));
     }
 
@@ -55,14 +57,15 @@ class RollbackController {
   }
 
   /// Generate rollback description
-  String _generateRollbackDescription(Snapshot snapshot, Deployment deployment) {
+  String _generateRollbackDescription(
+      Snapshot snapshot, Deployment deployment) {
     final age = DateTime.now().difference(snapshot.createdAt);
-    final ageText = age.inDays > 0 
+    final ageText = age.inDays > 0
         ? '${age.inDays} days ago'
-        : age.inHours > 0 
+        : age.inHours > 0
             ? '${age.inHours} hours ago'
             : '${age.inMinutes} minutes ago';
-    
+
     return 'Rollback to ${deployment.version} (${snapshot.gitCommit.substring(0, 8)}) - Created $ageText';
   }
 
@@ -84,7 +87,7 @@ class RollbackController {
     }
 
     final requestId = _uuid.v4();
-    
+
     // Create rollback request
     final request = RollbackRequest(
       id: requestId,
@@ -117,7 +120,8 @@ class RollbackController {
   }
 
   /// Generate AI reasoning for rollback
-  Future<String> _generateRollbackReasoning(Snapshot snapshot, String reason) async {
+  Future<String> _generateRollbackReasoning(
+      Snapshot snapshot, String reason) async {
     return '''
 Rollback Analysis:
 
@@ -139,7 +143,8 @@ Human approval is required before execution.
 
   /// Execute approved rollback
   /// Satisfies Requirements: 7.4 (System integrity verification and status reporting)
-  Future<RollbackResult> executeRollback(String requestId, String approvedBy) async {
+  Future<RollbackResult> executeRollback(
+      String requestId, String approvedBy) async {
     try {
       // Log approval
       await _auditService.logAction(
@@ -152,16 +157,18 @@ Human approval is required before execution.
 
       // Simulate rollback execution
       await Future.delayed(const Duration(seconds: 5));
-      
+
       // Simulate occasional rollback failures for demo
       final random = DateTime.now().millisecond;
-      if (random % 10 == 0) { // 10% failure rate
-        return await _handleRollbackFailure(requestId, 'Simulated rollback failure for demo');
+      if (random % 10 == 0) {
+        // 10% failure rate
+        return await _handleRollbackFailure(
+            requestId, 'Simulated rollback failure for demo');
       }
 
       // Verify system integrity after rollback
       final integrityCheck = await _verifySystemIntegrity();
-      
+
       // Log successful rollback
       await _auditService.logAction(
         actionType: 'rollback_completed',
@@ -181,32 +188,46 @@ Human approval is required before execution.
         integrityCheck: integrityCheck,
         message: 'Rollback completed successfully. System integrity verified.',
       );
-
     } catch (e) {
       return await _handleRollbackFailure(requestId, e.toString());
     }
   }
 
-  /// Handle rollback failure
+  /// Handle rollback failure with detailed error analysis
   /// Satisfies Requirements: 7.5 (Alternative recovery options on failure)
-  Future<RollbackResult> _handleRollbackFailure(String requestId, String error) async {
-    // Log rollback failure
+  Future<RollbackResult> _handleRollbackFailure(
+      String requestId, String error) async {
+    // Perform detailed error analysis
+    final errorAnalysis = await _performErrorAnalysis(error);
+
+    // Log rollback failure with detailed analysis
     await _auditService.logAction(
       actionType: 'rollback_failed',
-      description: 'Rollback execution failed',
-      contextData: {'request_id': requestId, 'error': error},
+      description: 'Rollback execution failed with detailed analysis',
+      aiReasoning:
+          'Rollback failure analyzed to provide targeted recovery options',
+      contextData: {
+        'request_id': requestId,
+        'error': error,
+        'error_category': errorAnalysis.category,
+        'severity': errorAnalysis.severity,
+        'root_cause': errorAnalysis.rootCause,
+        'affected_components': errorAnalysis.affectedComponents,
+      },
     );
 
-    // Generate alternative recovery options
-    final alternatives = await _generateAlternativeRecoveryOptions();
+    // Generate targeted recovery options based on error analysis
+    final alternatives = await _generateTargetedRecoveryOptions(errorAnalysis);
 
     return RollbackResult(
       requestId: requestId,
       success: false,
       completedAt: DateTime.now(),
       error: error,
-      message: 'Rollback failed. Alternative recovery options available.',
+      message:
+          'Rollback failed. ${errorAnalysis.summary} Alternative recovery options available.',
       alternativeOptions: alternatives,
+      errorAnalysis: errorAnalysis,
     );
   }
 
@@ -227,7 +248,7 @@ Human approval is required before execution.
     }
 
     final allPassed = checks.values.every((passed) => passed);
-    
+
     return IntegrityCheck(
       verified: allPassed,
       checksCount: checks.length,
@@ -240,19 +261,161 @@ Human approval is required before execution.
     );
   }
 
-  /// Generate alternative recovery options
-  Future<List<String>> _generateAlternativeRecoveryOptions() async {
-    return [
-      'Manual database restoration from backup',
-      'Partial rollback of configuration files only',
-      'Emergency maintenance mode activation',
-      'Contact system administrator for manual intervention',
-      'Restore from older verified snapshot',
-    ];
+  /// Perform detailed error analysis
+  Future<ErrorAnalysis> _performErrorAnalysis(String error) async {
+    final errorLower = error.toLowerCase();
+
+    // Categorize error type
+    String category;
+    String severity;
+    String rootCause;
+    List<String> affectedComponents;
+
+    if (errorLower.contains('database') || errorLower.contains('sql')) {
+      category = 'database';
+      severity = 'high';
+      rootCause = 'Database connection or query failure during rollback';
+      affectedComponents = ['database', 'data_layer'];
+    } else if (errorLower.contains('file') ||
+        errorLower.contains('permission')) {
+      category = 'filesystem';
+      severity = 'medium';
+      rootCause = 'File system access or permission issue';
+      affectedComponents = ['filesystem', 'configuration'];
+    } else if (errorLower.contains('network') ||
+        errorLower.contains('connection')) {
+      category = 'network';
+      severity = 'medium';
+      rootCause = 'Network connectivity issue during rollback';
+      affectedComponents = ['network', 'external_services'];
+    } else if (errorLower.contains('timeout')) {
+      category = 'timeout';
+      severity = 'medium';
+      rootCause = 'Operation timed out during rollback execution';
+      affectedComponents = ['system_resources'];
+    } else if (errorLower.contains('memory') ||
+        errorLower.contains('resource')) {
+      category = 'resources';
+      severity = 'high';
+      rootCause = 'Insufficient system resources for rollback';
+      affectedComponents = ['system_resources', 'memory'];
+    } else {
+      category = 'unknown';
+      severity = 'medium';
+      rootCause = 'Unclassified error during rollback';
+      affectedComponents = ['system'];
+    }
+
+    final summary = _generateErrorSummary(category, severity);
+
+    return ErrorAnalysis(
+      category: category,
+      severity: severity,
+      rootCause: rootCause,
+      affectedComponents: affectedComponents,
+      summary: summary,
+      timestamp: DateTime.now(),
+      originalError: error,
+    );
+  }
+
+  /// Generate error summary
+  String _generateErrorSummary(String category, String severity) {
+    switch (category) {
+      case 'database':
+        return 'Database-related rollback failure detected. Data integrity may be at risk.';
+      case 'filesystem':
+        return 'File system access issue during rollback. Configuration files may be affected.';
+      case 'network':
+        return 'Network connectivity problem during rollback. External dependencies unavailable.';
+      case 'timeout':
+        return 'Rollback operation timed out. System may be under heavy load.';
+      case 'resources':
+        return 'Insufficient system resources for rollback. Memory or disk space may be limited.';
+      default:
+        return 'Rollback failed due to an unidentified issue. Manual investigation required.';
+    }
+  }
+
+  /// Generate targeted recovery options based on error analysis
+  Future<List<String>> _generateTargetedRecoveryOptions(
+      ErrorAnalysis errorAnalysis) async {
+    final options = <String>[];
+
+    switch (errorAnalysis.category) {
+      case 'database':
+        options.addAll([
+          'Perform manual database restoration from verified backup',
+          'Execute database integrity check and repair',
+          'Rollback database schema changes only',
+          'Switch to read-only mode while investigating database issues',
+          'Contact database administrator for emergency recovery',
+        ]);
+        break;
+
+      case 'filesystem':
+        options.addAll([
+          'Manually restore configuration files from backup',
+          'Check and fix file permissions',
+          'Partial rollback of specific configuration files only',
+          'Restore from file system snapshot if available',
+          'Reset file permissions to default values',
+        ]);
+        break;
+
+      case 'network':
+        options.addAll([
+          'Retry rollback when network connectivity is restored',
+          'Perform offline rollback without external dependencies',
+          'Use cached/local copies of external resources',
+          'Switch to maintenance mode until network issues resolved',
+          'Manual configuration of network-dependent components',
+        ]);
+        break;
+
+      case 'timeout':
+        options.addAll([
+          'Retry rollback with extended timeout values',
+          'Perform rollback in smaller incremental steps',
+          'Schedule rollback during low-traffic period',
+          'Increase system resources and retry',
+          'Manual step-by-step rollback process',
+        ]);
+        break;
+
+      case 'resources':
+        options.addAll([
+          'Free up system resources and retry rollback',
+          'Perform rollback on system with more resources',
+          'Use incremental rollback to reduce resource usage',
+          'Clear temporary files and caches before retry',
+          'Schedule rollback during off-peak hours',
+        ]);
+        break;
+
+      default:
+        options.addAll([
+          'Manual investigation and custom recovery procedure',
+          'Contact system administrator for specialized assistance',
+          'Restore from older verified snapshot',
+          'Emergency maintenance mode activation',
+          'Full system restore from backup',
+        ]);
+    }
+
+    // Add common recovery options
+    options.addAll([
+      'Create incident report for post-mortem analysis',
+      'Document current system state for future reference',
+      'Notify stakeholders of rollback failure and recovery plan',
+    ]);
+
+    return options;
   }
 
   /// Reject rollback request
-  Future<void> rejectRollback(String requestId, String rejectedBy, String reason) async {
+  Future<void> rejectRollback(
+      String requestId, String rejectedBy, String reason) async {
     await _auditService.logAction(
       actionType: 'rollback_rejected',
       description: 'Rollback request rejected',
@@ -266,8 +429,10 @@ Human approval is required before execution.
   }
 
   /// Get rollback history
-  Future<List<Map<String, dynamic>>> getRollbackHistory(String environment) async {
-    final logs = await _auditService.getAuditLogsByActionType('rollback_completed');
+  Future<List<Map<String, dynamic>>> getRollbackHistory(
+      String environment) async {
+    final logs =
+        await _auditService.getAuditLogsByActionType('rollback_completed');
     return logs
         .where((log) => log.contextData?.contains(environment) == true)
         .map((log) => {
@@ -339,6 +504,7 @@ class RollbackResult {
   final String message;
   final IntegrityCheck? integrityCheck;
   final List<String>? alternativeOptions;
+  final ErrorAnalysis? errorAnalysis;
 
   RollbackResult({
     required this.requestId,
@@ -348,6 +514,28 @@ class RollbackResult {
     required this.message,
     this.integrityCheck,
     this.alternativeOptions,
+    this.errorAnalysis,
+  });
+}
+
+/// Error analysis result
+class ErrorAnalysis {
+  final String category;
+  final String severity;
+  final String rootCause;
+  final List<String> affectedComponents;
+  final String summary;
+  final DateTime timestamp;
+  final String originalError;
+
+  ErrorAnalysis({
+    required this.category,
+    required this.severity,
+    required this.rootCause,
+    required this.affectedComponents,
+    required this.summary,
+    required this.timestamp,
+    required this.originalError,
   });
 }
 

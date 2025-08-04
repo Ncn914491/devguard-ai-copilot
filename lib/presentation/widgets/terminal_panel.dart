@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/database/services/audit_log_service.dart';
 
 /// Embedded terminal panel for git operations and system commands
 class TerminalPanel extends StatefulWidget {
   final Function(String) onCommand;
 
   const TerminalPanel({
-    Key? key,
+    super.key,
     required this.onCommand,
-  }) : super(key: key);
+  });
 
   @override
   State<TerminalPanel> createState() => _TerminalPanelState();
@@ -20,7 +21,8 @@ class _TerminalPanelState extends State<TerminalPanel> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   final _authService = AuthService.instance;
-  
+  final _auditService = AuditLogService.instance;
+
   final List<TerminalEntry> _history = [];
   final List<String> _commandHistory = [];
   int _historyIndex = -1;
@@ -49,7 +51,8 @@ class _TerminalPanelState extends State<TerminalPanel> {
     ));
     _addEntry(TerminalEntry(
       type: TerminalEntryType.system,
-      content: 'Welcome ${user?.name ?? 'User'}! You are logged in as ${user?.role ?? 'unknown'}.',
+      content:
+          'Welcome ${user?.name ?? 'User'}! You are logged in as ${user?.role ?? 'unknown'}.',
       timestamp: DateTime.now(),
     ));
     _addEntry(TerminalEntry(
@@ -68,7 +71,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
     setState(() {
       _history.add(entry);
     });
-    
+
     // Auto-scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -83,21 +86,21 @@ class _TerminalPanelState extends State<TerminalPanel> {
 
   void _executeCommand(String command) {
     if (command.trim().isEmpty) return;
-    
+
     // Add command to history
     _commandHistory.add(command);
     _historyIndex = -1;
-    
+
     // Add command entry
     _addEntry(TerminalEntry(
       type: TerminalEntryType.command,
       content: '$_currentDirectory\$ $command',
       timestamp: DateTime.now(),
     ));
-    
+
     // Process command
     _processCommand(command.trim());
-    
+
     // Clear input
     _inputController.clear();
   }
@@ -106,7 +109,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
     final parts = command.split(' ');
     final cmd = parts[0].toLowerCase();
     final args = parts.length > 1 ? parts.sublist(1) : <String>[];
-    
+
     switch (cmd) {
       case 'help':
         _showHelp();
@@ -151,13 +154,13 @@ class _TerminalPanelState extends State<TerminalPanel> {
           timestamp: DateTime.now(),
         ));
     }
-    
+
     // Notify parent about command execution
     widget.onCommand(command);
   }
 
   void _showHelp() {
-    final helpText = '''Available commands:
+    const helpText = '''Available commands:
 
 System Commands:
   help          - Show this help message
@@ -187,7 +190,7 @@ Development Commands:
   docker run    - Run Docker container
 
 Note: Some commands require appropriate permissions based on your role.''';
-    
+
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
       content: helpText,
@@ -220,7 +223,7 @@ Note: Some commands require appropriate permissions based on your role.''';
       '.gitignore',
       'analysis_options.yaml',
     ];
-    
+
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
       content: files.join('  '),
@@ -245,7 +248,7 @@ Note: Some commands require appropriate permissions based on your role.''';
         _currentDirectory = '$_currentDirectory/$path';
       }
     }
-    
+
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
       content: 'Changed directory to $_currentDirectory',
@@ -262,7 +265,7 @@ Note: Some commands require appropriate permissions based on your role.''';
       ));
       return;
     }
-    
+
     if (args.isEmpty) {
       _addEntry(TerminalEntry(
         type: TerminalEntryType.error,
@@ -271,7 +274,7 @@ Note: Some commands require appropriate permissions based on your role.''';
       ));
       return;
     }
-    
+
     final gitCmd = args[0];
     switch (gitCmd) {
       case 'status':
@@ -325,6 +328,17 @@ Untracked files:
 no changes added to commit (use "git add" and/or "git commit -a")''',
       timestamp: DateTime.now(),
     ));
+
+    // Log git status command
+    _auditService.logAction(
+      actionType: 'git_status_executed',
+      description: 'Git status command executed in terminal',
+      contextData: {
+        'command': 'git status',
+        'directory': _currentDirectory,
+      },
+      userId: _authService.currentUser?.id,
+    );
   }
 
   void _gitAdd(List<String> files) {
@@ -336,17 +350,29 @@ no changes added to commit (use "git add" and/or "git commit -a")''',
       ));
       return;
     }
-    
+
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
       content: 'Added ${files.join(", ")} to staging area',
       timestamp: DateTime.now(),
     ));
+
+    // Log git add command with audit trail
+    _auditService.logAction(
+      actionType: 'git_add_executed',
+      description: 'Files added to git staging area',
+      contextData: {
+        'command': 'git add ${files.join(" ")}',
+        'files': files,
+        'directory': _currentDirectory,
+      },
+      userId: _authService.currentUser?.id,
+    );
   }
 
   void _gitCommit(List<String> args) {
     String message = 'Update files';
-    
+
     // Parse commit message
     for (int i = 0; i < args.length; i++) {
       if (args[i] == '-m' && i + 1 < args.length) {
@@ -354,14 +380,33 @@ no changes added to commit (use "git add" and/or "git commit -a")''',
         break;
       }
     }
-    
+
+    final commitHash =
+        'abc${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
-      content: '''[main abc1234] $message
+      content: '''[main $commitHash] $message
  2 files changed, 15 insertions(+), 3 deletions(-)
  create mode 100644 lib/core/auth/auth_service.dart''',
       timestamp: DateTime.now(),
     ));
+
+    // Log git commit with comprehensive audit trail
+    _auditService.logAction(
+      actionType: 'git_commit_executed',
+      description: 'Git commit created via terminal',
+      contextData: {
+        'command': 'git commit ${args.join(" ")}',
+        'commit_message': message,
+        'commit_hash': commitHash,
+        'directory': _currentDirectory,
+        'files_changed': 2,
+        'insertions': 15,
+        'deletions': 3,
+      },
+      userId: _authService.currentUser?.id,
+    );
   }
 
   void _gitPush() {
@@ -377,6 +422,22 @@ To https://github.com/devguard/ai-copilot.git
    def5678..abc1234  main -> main''',
       timestamp: DateTime.now(),
     ));
+
+    // Log git push with security audit trail
+    _auditService.logAction(
+      actionType: 'git_push_executed',
+      description: 'Code pushed to remote repository',
+      contextData: {
+        'command': 'git push',
+        'remote_url': 'https://github.com/devguard/ai-copilot.git',
+        'branch': 'main',
+        'objects_pushed': 8,
+        'bytes_transferred': '1.23 KiB',
+        'directory': _currentDirectory,
+      },
+      userId: _authService.currentUser?.id,
+      requiresApproval: true, // Push operations may require approval
+    );
   }
 
   void _gitPull() {
@@ -394,6 +455,22 @@ Fast-forward
  1 file changed, 1 insertion(+), 1 deletion(-)''',
       timestamp: DateTime.now(),
     ));
+
+    // Log git pull with audit trail
+    _auditService.logAction(
+      actionType: 'git_pull_executed',
+      description: 'Code pulled from remote repository',
+      contextData: {
+        'command': 'git pull',
+        'remote_url': 'https://github.com/devguard/ai-copilot',
+        'branch': 'main',
+        'objects_received': 3,
+        'bytes_received': '1.05 KiB',
+        'files_changed': 1,
+        'directory': _currentDirectory,
+      },
+      userId: _authService.currentUser?.id,
+    );
   }
 
   void _gitBranch() {
@@ -416,13 +493,25 @@ Fast-forward
       ));
       return;
     }
-    
+
     final branch = args[0];
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
       content: 'Switched to branch \'$branch\'',
       timestamp: DateTime.now(),
     ));
+
+    // Log git checkout with audit trail
+    _auditService.logAction(
+      actionType: 'git_checkout_executed',
+      description: 'Switched to git branch: $branch',
+      contextData: {
+        'command': 'git checkout $branch',
+        'target_branch': branch,
+        'directory': _currentDirectory,
+      },
+      userId: _authService.currentUser?.id,
+    );
   }
 
   void _handleNpmCommand(List<String> args) {
@@ -434,13 +523,14 @@ Fast-forward
       ));
       return;
     }
-    
+
     final npmCmd = args[0];
     switch (npmCmd) {
       case 'install':
         _addEntry(TerminalEntry(
           type: TerminalEntryType.output,
-          content: '''npm WARN deprecated package@1.0.0: This package is deprecated
+          content:
+              '''npm WARN deprecated package@1.0.0: This package is deprecated
 added 234 packages from 567 contributors and audited 890 packages in 12.345s
 found 0 vulnerabilities''',
           timestamp: DateTime.now(),
@@ -473,7 +563,7 @@ found 0 vulnerabilities''',
       ));
       return;
     }
-    
+
     final flutterCmd = args[0];
     switch (flutterCmd) {
       case 'run':
@@ -518,7 +608,7 @@ Building application for release...
       ));
       return;
     }
-    
+
     final dockerCmd = args[0];
     switch (dockerCmd) {
       case 'build':
@@ -569,13 +659,13 @@ Successfully tagged myapp:latest''',
       ));
       return;
     }
-    
+
     final historyText = _commandHistory
         .asMap()
         .entries
         .map((entry) => '${entry.key + 1}  ${entry.value}')
         .join('\n');
-    
+
     _addEntry(TerminalEntry(
       type: TerminalEntryType.output,
       content: historyText,
@@ -591,8 +681,8 @@ Successfully tagged myapp:latest''',
     ));
   }
 
-  void _handleKeyEvent(RawKeyEvent event) {
-    if (event is RawKeyDownEvent) {
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         _navigateHistory(-1);
       } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
@@ -603,10 +693,10 @@ Successfully tagged myapp:latest''',
 
   void _navigateHistory(int direction) {
     if (_commandHistory.isEmpty) return;
-    
+
     _historyIndex += direction;
     _historyIndex = _historyIndex.clamp(-1, _commandHistory.length - 1);
-    
+
     if (_historyIndex == -1) {
       _inputController.clear();
     } else {
@@ -634,7 +724,7 @@ Successfully tagged myapp:latest''',
               },
             ),
           ),
-          
+
           // Input line
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -649,9 +739,9 @@ Successfully tagged myapp:latest''',
                   ),
                 ),
                 Expanded(
-                  child: RawKeyboardListener(
+                  child: KeyboardListener(
                     focusNode: FocusNode(),
-                    onKey: _handleKeyEvent,
+                    onKeyEvent: _handleKeyEvent,
                     child: TextField(
                       controller: _inputController,
                       focusNode: _focusNode,
@@ -693,7 +783,7 @@ Successfully tagged myapp:latest''',
         textColor = Colors.blue[300]!;
         break;
     }
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       child: SelectableText(

@@ -13,12 +13,12 @@ void main() {
     late DeploymentService deploymentService;
     late SnapshotService snapshotService;
     late AuditLogService auditLogService;
-    final uuid = const Uuid();
+    const uuid = Uuid();
 
     setUpAll(() async {
       databaseService = DatabaseService.instance;
       await databaseService.initialize();
-      
+
       teamMemberService = TeamMemberService.instance;
       taskService = TaskService.instance;
       securityAlertService = SecurityAlertService.instance;
@@ -73,7 +73,8 @@ void main() {
         );
 
         await teamMemberService.createTeamMember(benchMember);
-        final benchMembers = await teamMemberService.getTeamMembersByStatus('bench');
+        final benchMembers =
+            await teamMemberService.getTeamMembersByStatus('bench');
         expect(benchMembers, isNotEmpty);
         expect(benchMembers.first.status, equals('bench'));
       });
@@ -143,7 +144,8 @@ void main() {
           severity: 'critical',
           title: 'Honeytoken Access Detected',
           description: 'Unauthorized access to sensitive data detected',
-          aiExplanation: 'A honeytoken has been accessed, indicating potential database breach.',
+          aiExplanation:
+              'A honeytoken has been accessed, indicating potential database breach.',
           status: 'new',
           detectedAt: DateTime.now(),
           rollbackSuggested: true,
@@ -152,7 +154,8 @@ void main() {
         final alertId = await securityAlertService.createSecurityAlert(alert);
         expect(alertId, isNotEmpty);
 
-        final retrievedAlert = await securityAlertService.getSecurityAlert(alertId);
+        final retrievedAlert =
+            await securityAlertService.getSecurityAlert(alertId);
         expect(retrievedAlert, isNotNull);
         expect(retrievedAlert!.type, equals('database_breach'));
         expect(retrievedAlert.severity, equals('critical'));
@@ -187,10 +190,12 @@ void main() {
           rollbackAvailable: true,
         );
 
-        final deploymentId = await deploymentService.createDeployment(deployment);
+        final deploymentId =
+            await deploymentService.createDeployment(deployment);
         expect(deploymentId, isNotEmpty);
 
-        final retrievedDeployment = await deploymentService.getDeployment(deploymentId);
+        final retrievedDeployment =
+            await deploymentService.getDeployment(deploymentId);
         expect(retrievedDeployment, isNotNull);
         expect(retrievedDeployment!.environment, equals('staging'));
         expect(retrievedDeployment.version, equals('v1.2.3'));
@@ -210,10 +215,13 @@ void main() {
           rollbackAvailable: true,
         );
 
-        final deploymentId = await deploymentService.createDeployment(deployment);
-        await deploymentService.markDeploymentFailed(deploymentId, 'Database connection failed');
+        final deploymentId =
+            await deploymentService.createDeployment(deployment);
+        await deploymentService.markDeploymentFailed(
+            deploymentId, 'Database connection failed');
 
-        final failedDeployment = await deploymentService.getDeployment(deploymentId);
+        final failedDeployment =
+            await deploymentService.getDeployment(deploymentId);
         expect(failedDeployment!.status, equals('failed'));
       });
     });
@@ -233,8 +241,9 @@ void main() {
         final snapshotId = await snapshotService.createSnapshot(snapshot);
         expect(snapshotId, isNotEmpty);
 
-        await snapshotService.verifySnapshot(snapshotId, verifiedBy: 'test-user');
-        
+        await snapshotService.verifySnapshot(snapshotId,
+            verifiedBy: 'test-user');
+
         final verifiedSnapshot = await snapshotService.getSnapshot(snapshotId);
         expect(verifiedSnapshot!.verified, isTrue);
       });
@@ -266,7 +275,7 @@ void main() {
         );
 
         expect(auditId, isNotEmpty);
-        
+
         final auditLog = await auditLogService.getAuditLog(auditId);
         expect(auditLog, isNotNull);
         expect(auditLog!.actionType, equals('test_action'));
@@ -283,9 +292,9 @@ void main() {
 
         final pendingLogs = await auditLogService.getLogsRequiringApproval();
         expect(pendingLogs, isNotEmpty);
-        
+
         await auditLogService.approveAction(auditId, 'approver-user');
-        
+
         final approvedLog = await auditLogService.getAuditLog(auditId);
         expect(approvedLog!.approved, isTrue);
         expect(approvedLog.approvedBy, equals('approver-user'));
@@ -305,7 +314,8 @@ void main() {
     group('Integration Tests', () {
       test('should maintain audit trail across all services', () async {
         // Requirement 9.1: All DB actions must be logged in AuditLog
-        final initialLogCount = (await auditLogService.getAuditStatistics())['total_logs']!;
+        final initialLogCount =
+            (await auditLogService.getAuditStatistics())['total_logs']!;
 
         // Create team member
         final memberId = uuid.v4();
@@ -355,7 +365,8 @@ void main() {
         );
         await securityAlertService.createSecurityAlert(alert);
 
-        final finalLogCount = (await auditLogService.getAuditStatistics())['total_logs']!;
+        final finalLogCount =
+            (await auditLogService.getAuditStatistics())['total_logs']!;
         expect(finalLogCount, greaterThan(initialLogCount));
       });
     });

@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
+import 'package:jwt_decode/jwt_decode.dart';
 import '../database/services/services.dart';
 import '../database/models/models.dart';
+import '../services/email_service.dart';
 
 /// Authentication service with role-based access control (RBAC)
 /// Supports Admin, Lead Developer, Developer, and Viewer roles
@@ -14,17 +17,25 @@ class AuthService {
 
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
-  
+  final _emailService = EmailService.instance;
+
   User? _currentUser;
   String? _currentToken;
+  String? _refreshToken;
   Timer? _tokenRefreshTimer;
+
+  // Rate limiting for login attempts
+  final Map<String, List<DateTime>> _loginAttempts = {};
+  final Map<String, DateTime> _blockedIPs = {};
+  final Map<String, String> _passwordResetTokens = {};
+  final Map<String, DateTime> _resetTokenExpiry = {};
 
   /// Current authenticated user
   User? get currentUser => _currentUser;
-  
+
   /// Current JWT token
   String? get currentToken => _currentToken;
-  
+
   /// Check if user is authenticated
   bool get isAuthenticated => _currentUser != null && _currentToken != null;
 
@@ -32,11 +43,12 @@ class AuthService {
   Future<void> initialize() async {
     // Check for existing session
     await _loadStoredSession();
-    
+
     await _auditService.logAction(
       actionType: 'auth_service_initialized',
       description: 'Authentication service initialized',
-      aiReasoning: 'Authentication service provides secure RBAC for application access',
+      aiReasoning:
+          'Authentication service provides secure RBAC for application access',
       contextData: {
         'has_stored_session': _currentUser != null,
       },
@@ -44,33 +56,61 @@ class AuthService {
   }
 
   /// Authenticate user with email and password
-  Future<AuthResult> authenticate(String email, String password) async {
+  Future<AuthResult> authenticate(String email, String password,
+      {String? ipAddress}) async {
     try {
+      // Check rate limiting
+      if (ipAddress != null && _isIPBlocked(ipAddress)) {
+        await _logFailedAttempt(
+            email, 'IP blocked due to too many attempts', ipAddress);
+        return AuthResult(
+            success: false,
+            message: 'Too many failed attempts. Please try again later.');
+      }
+
+      if (_isRateLimited(email)) {
+        await _logFailedAttempt(email, 'Rate limited', ipAddress);
+        return AuthResult(
+            success: false,
+            message:
+                'Too many login attempts. Please wait before trying again.');
+      }
+
       // Hash password for comparison
       final passwordHash = _hashPassword(password);
-      
+
       // Find user by email
       final user = await _findUserByEmail(email);
       if (user == null) {
+        _recordFailedAttempt(email, ipAddress);
         await _auditService.logAction(
           actionType: 'auth_failed',
           description: 'Authentication failed: User not found',
-          contextData: {'email': email, 'reason': 'user_not_found'},
+          contextData: {
+            'email': email,
+            'reason': 'user_not_found',
+            'ip_address': ipAddress ?? 'unknown'
+          },
         );
         return AuthResult(success: false, message: 'Invalid credentials');
       }
-      
+
       // Verify password
       if (user.passwordHash != passwordHash) {
+        _recordFailedAttempt(email, ipAddress);
         await _auditService.logAction(
           actionType: 'auth_failed',
           description: 'Authentication failed: Invalid password',
-          contextData: {'email': email, 'reason': 'invalid_password'},
+          contextData: {
+            'email': email,
+            'reason': 'invalid_password',
+            'ip_address': ipAddress ?? 'unknown'
+          },
           userId: user.id,
         );
         return AuthResult(success: false, message: 'Invalid credentials');
       }
-      
+
       // Check if user is active
       if (user.status != 'active') {
         await _auditService.logAction(
@@ -81,20 +121,25 @@ class AuthService {
         );
         return AuthResult(success: false, message: 'Account is inactive');
       }
-      
-      // Generate JWT token
-      final token = _generateJWTToken(user);
-      
+
+      // Generate JWT tokens
+      final tokens = _generateTokenPair(user);
+
+      // Clear failed attempts on successful login
+      _loginAttempts.remove(email);
+      if (ipAddress != null) _blockedIPs.remove(ipAddress);
+
       // Update user session
       _currentUser = user;
-      _currentToken = token;
-      
+      _currentToken = tokens.accessToken;
+      _refreshToken = tokens.refreshToken;
+
       // Store session
-      await _storeSession(user, token);
-      
+      await _storeSession(user, tokens.accessToken);
+
       // Start token refresh timer
       _startTokenRefreshTimer();
-      
+
       await _auditService.logAction(
         actionType: 'auth_success',
         description: 'User authenticated successfully',
@@ -102,17 +147,17 @@ class AuthService {
           'email': email,
           'role': user.role,
           'login_time': DateTime.now().toIso8601String(),
+          'ip_address': ipAddress ?? 'unknown',
         },
         userId: user.id,
       );
-      
+
       return AuthResult(
         success: true,
         message: 'Authentication successful',
         user: user,
-        token: token,
+        token: tokens.accessToken,
       );
-      
     } catch (e) {
       await _auditService.logAction(
         actionType: 'auth_error',
@@ -131,7 +176,7 @@ class AuthService {
       if (githubUser == null) {
         return AuthResult(success: false, message: 'Invalid GitHub token');
       }
-      
+
       // Find or create user
       User? user = await _findUserByEmail(githubUser['email']);
       if (user == null) {
@@ -148,20 +193,21 @@ class AuthService {
           updatedAt: DateTime.now(),
           passwordHash: '', // OAuth users don't have passwords
         );
-        
+
         await _createUser(user);
       }
-      
-      // Generate JWT token
-      final token = _generateJWTToken(user);
-      
+
+      // Generate JWT tokens
+      final tokens = _generateTokenPair(user);
+
       // Update session
       _currentUser = user;
-      _currentToken = token;
-      
-      await _storeSession(user, token);
+      _currentToken = tokens.accessToken;
+      _refreshToken = tokens.refreshToken;
+
+      await _storeSession(user, tokens.accessToken);
       _startTokenRefreshTimer();
-      
+
       await _auditService.logAction(
         actionType: 'oauth_auth_success',
         description: 'GitHub OAuth authentication successful',
@@ -172,21 +218,21 @@ class AuthService {
         },
         userId: user.id,
       );
-      
+
       return AuthResult(
         success: true,
         message: 'GitHub authentication successful',
         user: user,
-        token: token,
+        token: tokens.accessToken,
       );
-      
     } catch (e) {
       await _auditService.logAction(
         actionType: 'oauth_auth_error',
         description: 'GitHub OAuth authentication error: ${e.toString()}',
         contextData: {'error': e.toString()},
       );
-      return AuthResult(success: false, message: 'GitHub authentication failed');
+      return AuthResult(
+          success: false, message: 'GitHub authentication failed');
     }
   }
 
@@ -203,15 +249,16 @@ class AuthService {
         userId: _currentUser!.id,
       );
     }
-    
+
     // Clear session
     _currentUser = null;
     _currentToken = null;
-    
+    _refreshToken = null;
+
     // Stop token refresh timer
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = null;
-    
+
     // Clear stored session
     await _clearStoredSession();
   }
@@ -219,9 +266,9 @@ class AuthService {
   /// Check if user has permission for specific action
   bool hasPermission(String action) {
     if (_currentUser == null) return false;
-    
+
     final role = _currentUser!.role;
-    
+
     switch (action) {
       // Admin permissions
       case 'manage_users':
@@ -231,7 +278,7 @@ class AuthService {
       case 'assign_tasks':
       case 'manage_system_settings':
         return role == 'admin';
-      
+
       // Lead Developer permissions
       case 'review_code':
       case 'assign_developer_tasks':
@@ -239,21 +286,23 @@ class AuthService {
       case 'create_deployments':
       case 'approve_pull_requests':
         return role == 'admin' || role == 'lead_developer';
-      
+
       // Developer permissions
       case 'create_tasks':
       case 'edit_assigned_tasks':
       case 'commit_code':
       case 'create_pull_requests':
       case 'view_assigned_repositories':
-        return role == 'admin' || role == 'lead_developer' || role == 'developer';
-      
+        return role == 'admin' ||
+            role == 'lead_developer' ||
+            role == 'developer';
+
       // Viewer permissions
       case 'view_dashboards':
       case 'view_public_repositories':
       case 'view_project_overview':
         return true; // All authenticated users can view
-      
+
       default:
         return false;
     }
@@ -268,9 +317,9 @@ class AuthService {
         permissions: [],
       );
     }
-    
+
     final role = _currentUser!.role;
-    
+
     switch (role) {
       case 'admin':
         return DashboardConfig(
@@ -300,7 +349,7 @@ class AuthService {
             'view_dashboards',
           ],
         );
-      
+
       case 'lead_developer':
         return DashboardConfig(
           role: role,
@@ -324,7 +373,7 @@ class AuthService {
             'view_dashboards',
           ],
         );
-      
+
       case 'developer':
         return DashboardConfig(
           role: role,
@@ -344,7 +393,7 @@ class AuthService {
             'view_dashboards',
           ],
         );
-      
+
       case 'viewer':
         return DashboardConfig(
           role: role,
@@ -359,7 +408,7 @@ class AuthService {
             'view_project_overview',
           ],
         );
-      
+
       default:
         return DashboardConfig(
           role: 'unknown',
@@ -369,37 +418,9 @@ class AuthService {
     }
   }
 
-  /// Refresh JWT token
+  /// Refresh JWT token (legacy method for compatibility)
   Future<String?> refreshToken() async {
-    if (_currentUser == null) return null;
-    
-    try {
-      final newToken = _generateJWTToken(_currentUser!);
-      _currentToken = newToken;
-      
-      await _storeSession(_currentUser!, newToken);
-      
-      await _auditService.logAction(
-        actionType: 'token_refreshed',
-        description: 'JWT token refreshed',
-        contextData: {
-          'user_id': _currentUser!.id,
-          'refresh_time': DateTime.now().toIso8601String(),
-        },
-        userId: _currentUser!.id,
-      );
-      
-      return newToken;
-      
-    } catch (e) {
-      await _auditService.logAction(
-        actionType: 'token_refresh_failed',
-        description: 'JWT token refresh failed: ${e.toString()}',
-        contextData: {'error': e.toString()},
-        userId: _currentUser?.id,
-      );
-      return null;
-    }
+    return await refreshAccessToken();
   }
 
   /// Create new user account
@@ -419,9 +440,9 @@ class AuthService {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    
+
     await _createUser(user);
-    
+
     await _auditService.logAction(
       actionType: 'user_created',
       description: 'New user account created',
@@ -432,39 +453,15 @@ class AuthService {
       },
       userId: _currentUser?.id,
     );
-    
+
     return user;
   }
 
   /// Hash password using SHA-256
   String _hashPassword(String password) {
-    final bytes = utf8.encode(password + 'devguard_salt');
+    final bytes = utf8.encode('${password}devguard_salt');
     final digest = sha256.convert(bytes);
     return digest.toString();
-  }
-
-  /// Generate JWT token (simplified implementation)
-  String _generateJWTToken(User user) {
-    final header = base64Url.encode(utf8.encode(jsonEncode({
-      'alg': 'HS256',
-      'typ': 'JWT',
-    })));
-    
-    final payload = base64Url.encode(utf8.encode(jsonEncode({
-      'sub': user.id,
-      'email': user.email,
-      'role': user.role,
-      'iat': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'exp': DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch ~/ 1000,
-    })));
-    
-    final signature = base64Url.encode(
-      Hmac(sha256, utf8.encode('devguard_jwt_secret')).convert(
-        utf8.encode('$header.$payload')
-      ).bytes
-    );
-    
-    return '$header.$payload.$signature';
   }
 
   /// Verify GitHub token (mock implementation)
@@ -486,19 +483,20 @@ class AuthService {
 
   /// Authenticate user directly (for project creation)
   Future<void> authenticateUser(User user) async {
-    // Generate JWT token
-    final token = _generateJWTToken(user);
-    
+    // Generate JWT tokens
+    final tokens = _generateTokenPair(user);
+
     // Update user session
     _currentUser = user;
-    _currentToken = token;
-    
+    _currentToken = tokens.accessToken;
+    _refreshToken = tokens.refreshToken;
+
     // Store session
-    await _storeSession(user, token);
-    
+    await _storeSession(user, tokens.accessToken);
+
     // Start token refresh timer
     _startTokenRefreshTimer();
-    
+
     await _auditService.logAction(
       actionType: 'direct_auth_success',
       description: 'User authenticated directly after account creation',
@@ -557,7 +555,7 @@ class AuthService {
         updatedAt: DateTime.now(),
       ),
     };
-    
+
     return mockUsers[email];
   }
 
@@ -594,12 +592,249 @@ class AuthService {
     });
   }
 
+  /// Request password reset
+  Future<bool> requestPasswordReset(String email) async {
+    try {
+      final user = await _findUserByEmail(email);
+      if (user == null) {
+        // Don't reveal if email exists or not for security
+        return true;
+      }
+
+      final resetToken = _generateResetToken();
+      final expiryTime =
+          DateTime.now().add(Duration(hours: 1)); // 1 hour expiry
+
+      // Store reset token
+      _passwordResetTokens[resetToken] = user.id;
+      _resetTokenExpiry[resetToken] = expiryTime;
+
+      // Send reset email
+      await _emailService.sendPasswordResetEmail(email, resetToken);
+
+      await _auditService.logAction(
+        actionType: 'password_reset_requested',
+        description: 'Password reset token generated and sent',
+        contextData: {'email': email},
+        userId: user.id,
+      );
+
+      return true;
+    } catch (e) {
+      await _auditService.logAction(
+        actionType: 'password_reset_error',
+        description: 'Password reset request failed: ${e.toString()}',
+        contextData: {'email': email, 'error': e.toString()},
+      );
+      return false;
+    }
+  }
+
+  /// Reset password with token
+  Future<bool> resetPassword(String token, String newPassword) async {
+    try {
+      final userId = _passwordResetTokens[token];
+      final expiry = _resetTokenExpiry[token];
+
+      if (userId == null || expiry == null || DateTime.now().isAfter(expiry)) {
+        return false;
+      }
+
+      final hashedPassword = _hashPassword(newPassword);
+      await _updateUserPassword(userId, hashedPassword);
+
+      // Clear reset token
+      _passwordResetTokens.remove(token);
+      _resetTokenExpiry.remove(token);
+
+      await _auditService.logAction(
+        actionType: 'password_reset_completed',
+        description: 'Password successfully reset using token',
+        contextData: {},
+        userId: userId,
+      );
+
+      return true;
+    } catch (e) {
+      await _auditService.logAction(
+        actionType: 'password_reset_error',
+        description: 'Password reset failed: ${e.toString()}',
+        contextData: {'error': e.toString()},
+      );
+      return false;
+    }
+  }
+
+  /// Enhanced token refresh with refresh token
+  Future<String?> refreshAccessToken() async {
+    if (_refreshToken == null || _currentUser == null) return null;
+
+    try {
+      // Validate refresh token
+      if (_isTokenExpired(_refreshToken!)) {
+        await logout();
+        return null;
+      }
+
+      final tokens = _generateTokenPair(_currentUser!);
+      _currentToken = tokens.accessToken;
+      _refreshToken = tokens.refreshToken;
+
+      await _storeSession(_currentUser!, tokens.accessToken);
+      _startTokenRefreshTimer();
+
+      await _auditService.logAction(
+        actionType: 'token_refreshed',
+        description: 'Access token refreshed successfully',
+        contextData: {},
+        userId: _currentUser!.id,
+      );
+
+      return _currentToken;
+    } catch (e) {
+      await _auditService.logAction(
+        actionType: 'token_refresh_failed',
+        description: 'Token refresh failed: ${e.toString()}',
+        contextData: {'error': e.toString()},
+        userId: _currentUser?.id,
+      );
+      await logout();
+      return null;
+    }
+  }
+
+  /// Validate JWT token
+  bool validateToken(String token) {
+    try {
+      if (_isTokenExpired(token)) return false;
+      final payload = Jwt.parseJwt(token);
+      return payload['sub'] == _currentUser?.id;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Rate limiting helper methods
+  bool _isRateLimited(String email) {
+    final attempts = _loginAttempts[email] ?? [];
+    final recentAttempts = attempts
+        .where((attempt) => DateTime.now().difference(attempt).inMinutes < 15)
+        .length;
+    return recentAttempts >= 5; // Max 5 attempts per 15 minutes
+  }
+
+  bool _isIPBlocked(String ipAddress) {
+    final blockedUntil = _blockedIPs[ipAddress];
+    if (blockedUntil == null) return false;
+    return DateTime.now().isBefore(blockedUntil);
+  }
+
+  void _recordFailedAttempt(String email, String? ipAddress) {
+    // Record email attempt
+    _loginAttempts.putIfAbsent(email, () => []).add(DateTime.now());
+
+    // Block IP after 10 failed attempts from same IP
+    if (ipAddress != null) {
+      final ipAttempts = _loginAttempts.values
+          .expand((attempts) => attempts)
+          .where((attempt) => DateTime.now().difference(attempt).inMinutes < 30)
+          .length;
+
+      if (ipAttempts >= 10) {
+        _blockedIPs[ipAddress] = DateTime.now().add(Duration(hours: 1));
+      }
+    }
+  }
+
+  Future<void> _logFailedAttempt(
+      String identifier, String reason, String? ipAddress) async {
+    await _auditService.logAction(
+      actionType: 'login_failed',
+      description: 'Failed login attempt: $reason',
+      contextData: {
+        'identifier': identifier,
+        'reason': reason,
+        'ip_address': ipAddress ?? 'unknown'
+      },
+    );
+  }
+
+  String _generateResetToken() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (i) => random.nextInt(256));
+    return base64Encode(bytes);
+  }
+
+  /// Generate access and refresh token pair
+  TokenPair _generateTokenPair(User user) {
+    final now = DateTime.now();
+    final accessExpiry = now.add(Duration(minutes: 15)); // 15 minutes
+    final refreshExpiry = now.add(Duration(days: 7)); // 7 days
+
+    final accessHeader = base64Url.encode(utf8.encode(jsonEncode({
+      'alg': 'HS256',
+      'typ': 'JWT',
+    })));
+
+    final accessPayload = base64Url.encode(utf8.encode(jsonEncode({
+      'sub': user.id,
+      'email': user.email,
+      'role': user.role,
+      'iat': now.millisecondsSinceEpoch ~/ 1000,
+      'exp': accessExpiry.millisecondsSinceEpoch ~/ 1000,
+      'type': 'access'
+    })));
+
+    final refreshPayload = base64Url.encode(utf8.encode(jsonEncode({
+      'sub': user.id,
+      'iat': now.millisecondsSinceEpoch ~/ 1000,
+      'exp': refreshExpiry.millisecondsSinceEpoch ~/ 1000,
+      'type': 'refresh'
+    })));
+
+    final accessSignature = base64Url.encode(
+        Hmac(sha256, utf8.encode('devguard_jwt_secret'))
+            .convert(utf8.encode('$accessHeader.$accessPayload'))
+            .bytes);
+
+    final refreshSignature = base64Url.encode(
+        Hmac(sha256, utf8.encode('devguard_jwt_secret'))
+            .convert(utf8.encode('$accessHeader.$refreshPayload'))
+            .bytes);
+
+    return TokenPair(
+      accessToken: '$accessHeader.$accessPayload.$accessSignature',
+      refreshToken: '$accessHeader.$refreshPayload.$refreshSignature',
+    );
+  }
+
+  bool _isTokenExpired(String token) {
+    try {
+      final payload = Jwt.parseJwt(token);
+      final exp = payload['exp'] as int;
+      return DateTime.now().millisecondsSinceEpoch ~/ 1000 >= exp;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  Future<void> _updateUserPassword(String userId, String hashedPassword) async {
+    // This would update user password in database
+    // For demo purposes, just log the action
+    print('Password updated for user: $userId');
+  }
+
   /// Dispose resources
   void dispose() {
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = null;
     _currentUser = null;
     _currentToken = null;
+    _refreshToken = null;
+    _loginAttempts.clear();
+    _blockedIPs.clear();
+    _passwordResetTokens.clear();
+    _resetTokenExpiry.clear();
   }
 }
 
@@ -655,5 +890,16 @@ class DashboardConfig {
     required this.role,
     required this.availableScreens,
     required this.permissions,
+  });
+}
+
+/// Token pair for access and refresh tokens
+class TokenPair {
+  final String accessToken;
+  final String refreshToken;
+
+  TokenPair({
+    required this.accessToken,
+    required this.refreshToken,
   });
 }

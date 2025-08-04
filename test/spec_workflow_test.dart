@@ -11,16 +11,16 @@ void main() {
     late SpecService specService;
     late AuditLogService auditLogService;
     late GeminiService geminiService;
-    final uuid = const Uuid();
+    const uuid = Uuid();
 
     setUpAll(() async {
       databaseService = DatabaseService.instance;
       await databaseService.initialize();
-      
+
       specService = SpecService.instance;
       auditLogService = AuditLogService.instance;
       geminiService = GeminiService.instance;
-      
+
       // Initialize Gemini service in mock mode
       await geminiService.initialize();
     });
@@ -32,10 +32,11 @@ void main() {
     group('Gemini AI Service Tests', () {
       test('should process natural language specification', () async {
         // Requirement 1.1: Natural language specification parsing
-        const input = 'Add user authentication with email and password validation';
-        
+        const input =
+            'Add user authentication with email and password validation';
+
         final result = await geminiService.processSpecification(input);
-        
+
         expect(result.interpretation, isNotEmpty);
         expect(result.branchName, contains('feature/'));
         expect(result.commitMessage, startsWith('feat:'));
@@ -44,10 +45,11 @@ void main() {
 
       test('should handle security-related specifications', () async {
         // Requirement 1.1: Context-aware processing
-        const input = 'Implement OAuth2 authentication and secure API endpoints';
-        
+        const input =
+            'Implement OAuth2 authentication and secure API endpoints';
+
         final result = await geminiService.processSpecification(input);
-        
+
         expect(result.branchName, contains('security'));
         expect(result.estimatedComplexity, equals('high'));
         expect(result.requiredSkills, contains('security'));
@@ -56,9 +58,9 @@ void main() {
       test('should handle UI-related specifications', () async {
         // Requirement 1.1: Context-aware processing
         const input = 'Create a responsive dashboard with charts and tables';
-        
+
         final result = await geminiService.processSpecification(input);
-        
+
         expect(result.branchName, contains('ui'));
         expect(result.requiredSkills, contains('frontend'));
       });
@@ -69,9 +71,10 @@ void main() {
         // Requirement 1.1, 1.2: Natural language processing and git action generation
         const input = 'Implement user profile management with avatar upload';
         const userId = 'test-user-1';
-        
-        final spec = await specService.processSpecification(input, userId: userId);
-        
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
+
         expect(spec.id, isNotEmpty);
         expect(spec.rawInput, equals(input));
         expect(spec.aiInterpretation, isNotEmpty);
@@ -84,9 +87,10 @@ void main() {
       test('should validate specification input', () async {
         // Requirement 1.5: Clarification request for ambiguous specs
         const ambiguousInput = 'Fix it';
-        
-        final validation = await specService.validateSpecification(ambiguousInput);
-        
+
+        final validation =
+            await specService.validateSpecification(ambiguousInput);
+
         expect(validation.isValid, isFalse);
         expect(validation.issues, isNotEmpty);
         expect(validation.suggestions, isNotEmpty);
@@ -95,10 +99,11 @@ void main() {
 
       test('should pass validation for clear specifications', () async {
         // Requirement 1.5: Validation of clear specifications
-        const clearInput = 'Implement user authentication system with email login, password reset, and session management';
-        
+        const clearInput =
+            'Implement user authentication system with email login, password reset, and session management';
+
         final validation = await specService.validateSpecification(clearInput);
-        
+
         expect(validation.isValid, isTrue);
         expect(validation.issues, isEmpty);
       });
@@ -108,10 +113,11 @@ void main() {
         const input = 'Add search functionality to the product catalog';
         const userId = 'test-user-2';
         const approverId = 'approver-1';
-        
-        final spec = await specService.processSpecification(input, userId: userId);
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
         await specService.approveSpecification(spec.id, approverId);
-        
+
         final approvedSpec = await specService.getSpecification(spec.id);
         expect(approvedSpec!.status, equals('approved'));
         expect(approvedSpec.approvedBy, equals(approverId));
@@ -122,10 +128,12 @@ void main() {
         // Requirement 1.4: Specification workflow management
         const input = 'Implement data export functionality';
         const userId = 'test-user-3';
-        
-        final spec = await specService.processSpecification(input, userId: userId);
-        await specService.updateSpecificationStatus(spec.id, 'in_progress', userId: userId);
-        
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
+        await specService.updateSpecificationStatus(spec.id, 'in_progress',
+            userId: userId);
+
         final updatedSpec = await specService.getSpecification(spec.id);
         expect(updatedSpec!.status, equals('in_progress'));
       });
@@ -135,16 +143,19 @@ void main() {
         const input1 = 'Add notification system';
         const input2 = 'Implement caching layer';
         const userId = 'test-user-4';
-        
-        final spec1 = await specService.processSpecification(input1, userId: userId);
-        final spec2 = await specService.processSpecification(input2, userId: userId);
-        
+
+        final spec1 =
+            await specService.processSpecification(input1, userId: userId);
+        final spec2 =
+            await specService.processSpecification(input2, userId: userId);
+
         await specService.approveSpecification(spec1.id, userId);
         // spec2 remains in draft
-        
+
         final draftSpecs = await specService.getSpecificationsByStatus('draft');
-        final approvedSpecs = await specService.getSpecificationsByStatus('approved');
-        
+        final approvedSpecs =
+            await specService.getSpecificationsByStatus('approved');
+
         expect(draftSpecs.any((s) => s.id == spec2.id), isTrue);
         expect(approvedSpecs.any((s) => s.id == spec1.id), isTrue);
       });
@@ -153,10 +164,11 @@ void main() {
         // Requirement 9.1: Audit logging for all actions
         const input = 'Add temporary feature for testing';
         const userId = 'test-user-5';
-        
-        final spec = await specService.processSpecification(input, userId: userId);
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
         await specService.deleteSpecification(spec.id);
-        
+
         final deletedSpec = await specService.getSpecification(spec.id);
         expect(deletedSpec, isNull);
       });
@@ -167,17 +179,21 @@ void main() {
         // Requirement 9.1, 9.2: AI action logging with context and reasoning
         const input = 'Implement real-time chat functionality';
         const userId = 'audit-test-user';
-        
-        final initialLogCount = (await auditLogService.getAuditStatistics())['total_logs']!;
-        
+
+        final initialLogCount =
+            (await auditLogService.getAuditStatistics())['total_logs']!;
+
         await specService.processSpecification(input, userId: userId);
-        
-        final finalLogCount = (await auditLogService.getAuditStatistics())['total_logs']!;
+
+        final finalLogCount =
+            (await auditLogService.getAuditStatistics())['total_logs']!;
         expect(finalLogCount, greaterThan(initialLogCount));
-        
+
         // Check for specific audit log entries
         final aiActions = await auditLogService.getAIActions();
-        expect(aiActions.any((log) => log.actionType == 'specification_processed'), isTrue);
+        expect(
+            aiActions.any((log) => log.actionType == 'specification_processed'),
+            isTrue);
       });
 
       test('should log specification approval in audit trail', () async {
@@ -185,24 +201,28 @@ void main() {
         const input = 'Add file upload with virus scanning';
         const userId = 'audit-user-2';
         const approverId = 'audit-approver';
-        
-        final spec = await specService.processSpecification(input, userId: userId);
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
         await specService.approveSpecification(spec.id, approverId);
-        
-        final approvalLogs = await auditLogService.getAuditLogsByActionType('specification_approved');
-        expect(approvalLogs.any((log) => 
-          log.contextData?.contains(spec.id) == true && 
-          log.approvedBy == approverId
-        ), isTrue);
+
+        final approvalLogs = await auditLogService
+            .getAuditLogsByActionType('specification_approved');
+        expect(
+            approvalLogs.any((log) =>
+                log.contextData?.contains(spec.id) == true &&
+                log.approvedBy == approverId),
+            isTrue);
       });
 
       test('should log validation attempts', () async {
         // Requirement 9.1: Complete audit logging
         const input = 'Make the thing work better';
-        
+
         await specService.validateSpecification(input);
-        
-        final validationLogs = await auditLogService.getAuditLogsByActionType('specification_validated');
+
+        final validationLogs = await auditLogService
+            .getAuditLogsByActionType('specification_validated');
         expect(validationLogs, isNotEmpty);
         expect(validationLogs.first.aiReasoning, contains('validation'));
       });
@@ -211,34 +231,38 @@ void main() {
     group('Integration Tests', () {
       test('should complete full spec-to-code workflow', () async {
         // Requirements 1.1-1.5: Complete natural language specification processing
-        const input = 'Create API endpoint for user profile updates with validation';
+        const input =
+            'Create API endpoint for user profile updates with validation';
         const userId = 'integration-user';
         const approverId = 'integration-approver';
-        
+
         // Step 1: Validate input
         final validation = await specService.validateSpecification(input);
         expect(validation.isValid, isTrue);
-        
+
         // Step 2: Process specification
-        final spec = await specService.processSpecification(input, userId: userId);
+        final spec =
+            await specService.processSpecification(input, userId: userId);
         expect(spec.status, equals('draft'));
         expect(spec.suggestedBranchName, isNotEmpty);
         expect(spec.suggestedCommitMessage, isNotEmpty);
-        
+
         // Step 3: Approve specification
         await specService.approveSpecification(spec.id, approverId);
         final approvedSpec = await specService.getSpecification(spec.id);
         expect(approvedSpec!.status, equals('approved'));
-        
+
         // Step 4: Update to in progress
-        await specService.updateSpecificationStatus(spec.id, 'in_progress', userId: userId);
-        
+        await specService.updateSpecificationStatus(spec.id, 'in_progress',
+            userId: userId);
+
         // Step 5: Complete
-        await specService.updateSpecificationStatus(spec.id, 'completed', userId: userId);
-        
+        await specService.updateSpecificationStatus(spec.id, 'completed',
+            userId: userId);
+
         final completedSpec = await specService.getSpecification(spec.id);
         expect(completedSpec!.status, equals('completed'));
-        
+
         // Verify audit trail
         final auditStats = await auditLogService.getAuditStatistics();
         expect(auditStats['total_logs'], greaterThan(0));
@@ -260,20 +284,22 @@ void main() {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
-        
+
         await teamMemberService.createTeamMember(member);
-        
+
         // Process a security-related specification
         const input = 'Implement OAuth2 authentication with JWT tokens';
         const userId = 'assignment-test-user';
-        
-        final spec = await specService.processSpecification(input, userId: userId);
-        
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
+
         // The AI should suggest the security expert based on expertise matching
         // Note: This might be null if no matching expertise is found
         expect(spec.assignedTo, isNotNull);
         // Verify the assigned member has security expertise
-        final assignedMember = await teamMemberService.getTeamMember(spec.assignedTo!);
+        final assignedMember =
+            await teamMemberService.getTeamMember(spec.assignedTo!);
         expect(assignedMember!.expertise, contains('security'));
       });
 
@@ -281,23 +307,29 @@ void main() {
         // Requirement 9.1: Data integrity and audit consistency
         const input = 'Add multi-language support with translation management';
         const userId = 'consistency-user';
-        
-        final initialAuditCount = (await auditLogService.getAuditStatistics())['total_logs']!;
-        
-        final spec = await specService.processSpecification(input, userId: userId);
-        
+
+        final initialAuditCount =
+            (await auditLogService.getAuditStatistics())['total_logs']!;
+
+        final spec =
+            await specService.processSpecification(input, userId: userId);
+
         // Verify specification was created
         final retrievedSpec = await specService.getSpecification(spec.id);
         expect(retrievedSpec, isNotNull);
         expect(retrievedSpec!.rawInput, equals(input));
-        
+
         // Verify audit logs were created
-        final finalAuditCount = (await auditLogService.getAuditStatistics())['total_logs']!;
+        final finalAuditCount =
+            (await auditLogService.getAuditStatistics())['total_logs']!;
         expect(finalAuditCount, greaterThan(initialAuditCount));
-        
+
         // Verify audit logs contain correct context
-        final recentLogs = await auditLogService.getAuditLogsByActionType('specification_processed');
-        expect(recentLogs.any((log) => log.contextData?.contains(spec.id) == true), isTrue);
+        final recentLogs = await auditLogService
+            .getAuditLogsByActionType('specification_processed');
+        expect(
+            recentLogs.any((log) => log.contextData?.contains(spec.id) == true),
+            isTrue);
       });
     });
 
@@ -313,7 +345,7 @@ void main() {
       test('should handle specification not found', () async {
         // Requirement 1.4: Error handling for missing specifications
         const nonExistentId = 'non-existent-spec-id';
-        
+
         final spec = await specService.getSpecification(nonExistentId);
         expect(spec, isNull);
       });
@@ -322,15 +354,16 @@ void main() {
         // Requirement 9.1: Error logging for transparency
         const invalidInput = ''; // This should cause a failure
         const userId = 'error-test-user';
-        
+
         try {
           await specService.processSpecification(invalidInput, userId: userId);
         } catch (e) {
           // Expected to fail
         }
-        
+
         // Check that failure was logged
-        final errorLogs = await auditLogService.getAuditLogsByActionType('specification_processing_failed');
+        final errorLogs = await auditLogService
+            .getAuditLogsByActionType('specification_processing_failed');
         expect(errorLogs, isNotEmpty);
       });
     });

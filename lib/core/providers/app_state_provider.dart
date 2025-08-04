@@ -4,7 +4,7 @@ class AppStateProvider extends ChangeNotifier {
   String _currentScreen = 'home';
   bool _isLoading = false;
   String? _error;
-  Map<String, dynamic> _appData = {};
+  final Map<String, dynamic> _appData = {};
 
   // Getters
   String get currentScreen => _currentScreen;
@@ -69,7 +69,7 @@ class AppStateProvider extends ChangeNotifier {
   Future<T> executeWithLoading<T>(Future<T> Function() operation) async {
     setLoading(true);
     clearError();
-    
+
     try {
       final result = await operation();
       return result;

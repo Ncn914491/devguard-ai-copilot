@@ -3,7 +3,6 @@ import '../widgets/join_request_form.dart';
 import '../widgets/login_form.dart';
 import '../widgets/admin_signup_form.dart';
 import '../widgets/dashboard_preview.dart';
-import '../../core/theme/app_theme.dart';
 
 /// Pre-login landing page with onboarding flow
 class LandingScreen extends StatefulWidget {
@@ -62,14 +61,14 @@ class _LandingScreenState extends State<LandingScreen>
                     children: [
                       // Header
                       _buildHeader(),
-                      
+
                       const SizedBox(height: 40),
-                      
+
                       // Tab selector
                       _buildTabSelector(),
-                      
+
                       const SizedBox(height: 32),
-                      
+
                       // Content area
                       Expanded(
                         child: TabBarView(
@@ -81,14 +80,14 @@ class _LandingScreenState extends State<LandingScreen>
                           ],
                         ),
                       ),
-                      
+
                       // Footer
                       _buildFooter(),
                     ],
                   ),
                 ),
               ),
-              
+
               // Right side - Dashboard preview
               Expanded(
                 flex: 3,
@@ -138,9 +137,9 @@ class _LandingScreenState extends State<LandingScreen>
             Text(
               'DevGuard AI Copilot',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
             ),
           ],
         ),
@@ -148,16 +147,16 @@ class _LandingScreenState extends State<LandingScreen>
         Text(
           'Welcome to the AI-Powered Development Security Platform',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
         Text(
           'Streamline your development workflow with integrated code editing, '
           'git operations, task management, and security monitoring.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: Theme.of(context).textTheme.bodyMedium?.color,
-          ),
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
         ),
       ],
     );
@@ -235,8 +234,8 @@ class _LandingScreenState extends State<LandingScreen>
           Text(
             'Create New Project',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -258,8 +257,8 @@ class _LandingScreenState extends State<LandingScreen>
           Text(
             'Request to Join',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -281,8 +280,8 @@ class _LandingScreenState extends State<LandingScreen>
           Text(
             'Welcome Back',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -346,9 +345,9 @@ class _LandingScreenState extends State<LandingScreen>
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).primaryColor,
-          fontWeight: FontWeight.w500,
-        ),
+              color: Theme.of(context).primaryColor,
+              fontWeight: FontWeight.w500,
+            ),
       ),
     );
   }

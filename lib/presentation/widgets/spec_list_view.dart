@@ -30,15 +30,21 @@ class SpecListView extends StatelessWidget {
             Text(
               'No specifications yet',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Create your first specification using the AI assistant',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.5),
+                  ),
             ),
           ],
         ),
@@ -88,34 +94,34 @@ class SpecificationCard extends StatelessWidget {
                   child: Text(
                     specification.suggestedBranchName,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                    ),
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
                   ),
                 ),
                 _buildStatusChip(context, specification.status),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // Commit message
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 specification.suggestedCommitMessage,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                ),
+                      fontFamily: 'monospace',
+                    ),
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // AI Interpretation
             Text(
               specification.aiInterpretation,
@@ -123,44 +129,54 @@ class SpecificationCard extends StatelessWidget {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Metadata
             Row(
               children: [
                 Icon(
                   Icons.schedule,
                   size: 14,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _formatDate(specification.createdAt),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  ),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.6),
+                      ),
                 ),
                 if (specification.assignedTo != null) ...[
                   const SizedBox(width: 16),
                   Icon(
                     Icons.person,
                     size: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'Assigned',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                    ),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
+                        ),
                   ),
                 ],
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Actions
             Row(
               children: [
@@ -218,7 +234,7 @@ class SpecificationCard extends StatelessWidget {
 
     switch (status) {
       case 'draft':
-        backgroundColor = Theme.of(context).colorScheme.surfaceVariant;
+        backgroundColor = Theme.of(context).colorScheme.surfaceContainerHighest;
         textColor = Theme.of(context).colorScheme.onSurfaceVariant;
         icon = Icons.edit;
         break;
@@ -238,7 +254,7 @@ class SpecificationCard extends StatelessWidget {
         icon = Icons.done_all;
         break;
       default:
-        backgroundColor = Theme.of(context).colorScheme.surfaceVariant;
+        backgroundColor = Theme.of(context).colorScheme.surfaceContainerHighest;
         textColor = Theme.of(context).colorScheme.onSurfaceVariant;
         icon = Icons.help;
     }
@@ -306,7 +322,8 @@ class SpecificationCard extends StatelessWidget {
   void _showDetails(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => SpecificationDetailsDialog(specification: specification),
+      builder: (context) =>
+          SpecificationDetailsDialog(specification: specification),
     );
   }
 
@@ -329,7 +346,8 @@ class SpecificationCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Specification'),
-        content: const Text('Are you sure you want to delete this specification? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this specification? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -339,7 +357,8 @@ class SpecificationCard extends StatelessWidget {
             onPressed: () async {
               Navigator.of(context).pop();
               try {
-                await SpecService.instance.deleteSpecification(specification.id);
+                await SpecService.instance
+                    .deleteSpecification(specification.id);
                 onUpdated();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -386,8 +405,8 @@ class SpecificationDetailsDialog extends StatelessWidget {
                   child: Text(
                     'Specification Details',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 IconButton(
@@ -396,19 +415,19 @@ class SpecificationDetailsDialog extends StatelessWidget {
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            _buildDetailSection(context, 'Original Input', specification.rawInput),
-            _buildDetailSection(context, 'AI Interpretation', specification.aiInterpretation),
-            _buildDetailSection(context, 'Branch Name', specification.suggestedBranchName),
-            _buildDetailSection(context, 'Commit Message', specification.suggestedCommitMessage),
-            
+            _buildDetailSection(
+                context, 'Original Input', specification.rawInput),
+            _buildDetailSection(
+                context, 'AI Interpretation', specification.aiInterpretation),
+            _buildDetailSection(
+                context, 'Branch Name', specification.suggestedBranchName),
+            _buildDetailSection(context, 'Commit Message',
+                specification.suggestedCommitMessage),
             if (specification.placeholderDiff != null)
-              _buildDetailSection(context, 'Expected Changes', specification.placeholderDiff!),
-            
+              _buildDetailSection(
+                  context, 'Expected Changes', specification.placeholderDiff!),
             const SizedBox(height: 16),
-            
             Row(
               children: [
                 Expanded(
@@ -417,9 +436,10 @@ class SpecificationDetailsDialog extends StatelessWidget {
                     children: [
                       Text(
                         'Status',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                       Text(specification.status.toUpperCase()),
                     ],
@@ -431,9 +451,10 @@ class SpecificationDetailsDialog extends StatelessWidget {
                     children: [
                       Text(
                         'Created',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                       Text(specification.createdAt.toString().split('.')[0]),
                     ],
@@ -447,7 +468,8 @@ class SpecificationDetailsDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailSection(BuildContext context, String title, String content) {
+  Widget _buildDetailSection(
+      BuildContext context, String title, String content) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -456,22 +478,25 @@ class SpecificationDetailsDialog extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 4),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               content,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontFamily: title.contains('Branch') || title.contains('Commit') ? 'monospace' : null,
-              ),
+                    fontFamily:
+                        title.contains('Branch') || title.contains('Commit')
+                            ? 'monospace'
+                            : null,
+                  ),
             ),
           ),
         ],
