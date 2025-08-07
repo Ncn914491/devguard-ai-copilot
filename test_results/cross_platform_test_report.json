@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-08-04T22:07:07.381891",
+  "platform": {
+    "os": "windows",
+    "version": "\"Windows 11 Home Single Language\" 10.0 (Build 26100)",
+    "dart_version": "3.8.1 (stable) (Wed May 28 00:47:25 2025 -0700) on \"windows_x64\""
+  },
+  "summary": {
+    "total_suites": 5,
+    "passed_suites": 0,
+    "failed_suites": 5,
+    "total_duration_seconds": 0
+  },
+  "results": {
+    "unit": {
+      "success": false,
+      "duration_seconds": 0,
+      "errors": [
+        "ProcessException: The system cannot find the file specified.\r\n\n  Command: flutter test test/ --reporter=json"
+      ],
+      "has_output": false
+    },
+    "widget": {
+      "success": false,
+      "duration_seconds": 0,
+      "errors": [
+        "ProcessException: The system cannot find the file specified.\r\n\n  Command: flutter test test/cross_platform/responsive_ui_test.dart --reporter=json"
+      ],
+      "has_output": false
+    },
+    "integration": {
+      "success": false,
+      "duration_seconds": 0,
+      "errors": [
+        "ProcessException: The system cannot find the file specified.\r\n\n  Command: flutter test integration_test/ --reporter=json"
+      ],
+      "has_output": false
+    },
+    "platform": {
+      "success": false,
+      "duration_seconds": 0,
+      "errors": [
+        "ProcessException: The system cannot find the file specified.\r\n\n  Command: flutter test test/cross_platform/platform_specific_test.dart --reporter=json"
+      ],
+      "has_output": false
+    },
+    "responsive": {
+      "success": false,
+      "duration_seconds": 0,
+      "errors": [
+        "ProcessException: The system cannot find the file specified.\r\n\n  Command: flutter test test/cross_platform/responsive_ui_test.dart --reporter=json"
+      ],
+      "has_output": false
+    }
+  }
+}

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import '../database/services/services.dart';
+import '../supabase/services/supabase_audit_log_service.dart';
 
 /// Comprehensive error handling and recovery system
 /// Satisfies Requirements: 12.1, 12.2, 12.3, 12.4 (Error handling and recovery)
@@ -12,7 +12,7 @@ class ErrorHandler {
   ErrorHandler._internal();
 
   final _uuid = const Uuid();
-  final _auditService = AuditLogService.instance;
+  final _auditService = SupabaseAuditLogService.instance;
   final Map<String, int> _errorCounts = {};
   final Map<String, DateTime> _lastErrorTimes = {};
   final List<ErrorRecoveryAction> _recoveryActions = [];
@@ -48,7 +48,7 @@ class ErrorHandler {
       stackTrace: details.stack.toString(),
       context: {
         'library': details.library,
-        'widget': details.context?.widget.runtimeType.toString(),
+        'widget': details.context?.toString(),
       },
       timestamp: DateTime.now(),
     );
@@ -657,6 +657,32 @@ class AppError {
     required this.context,
     required this.timestamp,
   });
+
+  /// Create a validation error
+  static AppError validation(String message) {
+    return AppError(
+      id: 'validation_${DateTime.now().millisecondsSinceEpoch}',
+      type: ErrorType.system,
+      severity: ErrorSeverity.medium,
+      message: message,
+      stackTrace: StackTrace.current.toString(),
+      context: {},
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Create a not found error
+  static AppError notFound(String message) {
+    return AppError(
+      id: 'not_found_${DateTime.now().millisecondsSinceEpoch}',
+      type: ErrorType.system,
+      severity: ErrorSeverity.medium,
+      message: message,
+      stackTrace: StackTrace.current.toString(),
+      context: {},
+      timestamp: DateTime.now(),
+    );
+  }
 }
 
 /// Error types
@@ -675,6 +701,65 @@ enum ErrorSeverity {
   medium,
   high,
   critical,
+}
+
+/// Retry policy for handling transient errors
+class RetryPolicy {
+  static const int defaultMaxRetries = 3;
+  static const Duration defaultDelay = Duration(milliseconds: 500);
+
+  /// Execute a function with retry logic
+  static Future<T> withRetry<T>(
+    Future<T> Function() operation, {
+    int maxRetries = defaultMaxRetries,
+    Duration delay = defaultDelay,
+    bool Function(dynamic error)? shouldRetry,
+  }) async {
+    int attempts = 0;
+
+    while (attempts < maxRetries) {
+      try {
+        return await operation();
+      } catch (error) {
+        attempts++;
+
+        // Check if we should retry this error
+        if (shouldRetry != null && !shouldRetry(error)) {
+          rethrow;
+        }
+
+        // If this was the last attempt, rethrow the error
+        if (attempts >= maxRetries) {
+          rethrow;
+        }
+
+        // Wait before retrying
+        await Future.delayed(delay * attempts);
+      }
+    }
+
+    throw Exception('Retry policy failed after $maxRetries attempts');
+  }
+
+  /// Check if an error is retryable
+  static bool isRetryableError(dynamic error) {
+    if (error is Exception) {
+      final errorString = error.toString().toLowerCase();
+
+      // Network-related errors that are typically retryable
+      if (errorString.contains('timeout') ||
+          errorString.contains('connection') ||
+          errorString.contains('network') ||
+          errorString.contains('socket') ||
+          errorString.contains('502') ||
+          errorString.contains('503') ||
+          errorString.contains('504')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }
 
 /// Error handling result

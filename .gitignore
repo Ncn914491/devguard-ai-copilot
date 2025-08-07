@@ -62,3 +62,9 @@ linux/flutter/generated_plugin_registrant.h
 # Logs
 logs/
 *.log
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging

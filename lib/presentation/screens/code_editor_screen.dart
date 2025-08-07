@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import '../widgets/terminal_panel.dart';
 import '../widgets/file_explorer.dart';
 import '../widgets/code_editor_widget.dart';
+import '../screens/file_management_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/gitops/git_integration.dart';
+import '../../core/services/supabase_file_system_service.dart';
 
 /// Code editor screen with integrated terminal and file explorer
 /// Provides syntax highlighting and AI-assisted code suggestions
@@ -522,6 +524,7 @@ if __name__ == "__main__":
           _buildMenuButton('File', [
             MenuAction('New File', Icons.add, () => _createNewFile()),
             MenuAction('Open File', Icons.folder_open, () => _openFileDialog()),
+            MenuAction('File Manager', Icons.cloud, () => _openFileManager()),
             MenuAction('Save', Icons.save, () => _saveCurrentFile()),
             MenuAction('Save All', Icons.save_alt, () => _saveAllFiles()),
           ]),
@@ -606,6 +609,14 @@ if __name__ == "__main__":
 
   void _createNewFile() {
     // Implementation for creating new file
+  }
+
+  void _openFileManager() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const FileManagementScreen(),
+      ),
+    );
   }
 
   void _openFileDialog() {

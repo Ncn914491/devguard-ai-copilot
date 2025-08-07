@@ -43,11 +43,13 @@ RUN flutter build linux --release
 # Runtime stage
 FROM ubuntu:22.04 AS runtime
 
-# Install runtime dependencies
+# Install runtime dependencies (removed SQLite, added curl for Supabase connectivity)
 RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     libblkid1 \
     liblzma5 \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -69,9 +71,14 @@ USER devguard
 # Expose port (if needed for web interface)
 EXPOSE 8080
 
-# Health check
+# Health check with Supabase connectivity verification
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pgrep -f devguard_ai_copilot || exit 1
+    CMD pgrep -f devguard_ai_copilot && \
+        if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then \
+            curl -f "$SUPABASE_URL/rest/v1/" -H "apikey: $SUPABASE_ANON_KEY"; \
+        else \
+            echo "Supabase environment variables not set"; \
+        fi || exit 1
 
 # Set entrypoint
 ENTRYPOINT ["./devguard_ai_copilot"]

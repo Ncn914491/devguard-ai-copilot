@@ -108,11 +108,11 @@ APP_ENVIRONMENT=production
 APP_DEBUG=false
 APP_PORT=8080
 
-# Database Configuration
-DATABASE_TYPE=sqlite
-DATABASE_PATH=./data/devguard_production.db
-DATABASE_BACKUP_PATH=./backups
-DATABASE_POOL_SIZE=10
+# Supabase Configuration
+SUPABASE_URL=${SUPABASE_URL}
+SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+DATABASE_TYPE=supabase
 DATABASE_TIMEOUT=30
 
 # Security Configuration
@@ -187,10 +187,11 @@ APP_ENVIRONMENT=staging
 APP_DEBUG=true
 APP_PORT=8080
 
-# Database Configuration
-DATABASE_TYPE=sqlite
-DATABASE_PATH=./data/devguard_staging.db
-DATABASE_BACKUP_PATH=./backups
+# Supabase Configuration (Staging)
+SUPABASE_URL=${SUPABASE_STAGING_URL}
+SUPABASE_ANON_KEY=${SUPABASE_STAGING_ANON_KEY}
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_STAGING_SERVICE_ROLE_KEY}
+DATABASE_TYPE=supabase
 
 # Security Configuration (Use weaker settings for staging)
 JWT_SECRET=staging_jwt_secret_key_for_testing_only
@@ -219,9 +220,11 @@ APP_ENVIRONMENT=development
 APP_DEBUG=true
 APP_PORT=8080
 
-# Database Configuration
-DATABASE_TYPE=sqlite
-DATABASE_PATH=./data/devguard_dev.db
+# Supabase Configuration (Development)
+SUPABASE_URL=${SUPABASE_DEV_URL}
+SUPABASE_ANON_KEY=${SUPABASE_DEV_ANON_KEY}
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_DEV_SERVICE_ROLE_KEY}
+DATABASE_TYPE=supabase
 
 # Security Configuration (Minimal for development)
 JWT_SECRET=dev_jwt_secret_key_for_development_only
@@ -353,9 +356,8 @@ RUN flutter build linux --release
 # Production stage
 FROM ubuntu:22.04
 
-# Install runtime dependencies
+# Install runtime dependencies (removed SQLite, using Supabase)
 RUN apt-get update && apt-get install -y \\
-    sqlite3 \\
     nginx \\
     supervisor \\
     curl \\
@@ -365,8 +367,8 @@ RUN apt-get update && apt-get install -y \\
 # Create application user
 RUN useradd -r -s /bin/false devguard
 
-# Create application directories
-RUN mkdir -p /app/{data,logs,backups,config} \\
+# Create application directories (no data directory needed with Supabase)
+RUN mkdir -p /app/{logs,backups,config} \\
     && chown -R devguard:devguard /app
 
 # Copy built applications
@@ -387,9 +389,14 @@ RUN chown -R devguard:devguard /app \\
 # Expose ports
 EXPOSE 80 8080 8081 9090
 
-# Health check
+# Health check with Supabase connectivity verification
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
-    CMD curl -f http://localhost/health || exit 1
+    CMD curl -f http://localhost/health && \\
+        if [ -n "\$SUPABASE_URL" ] && [ -n "\$SUPABASE_ANON_KEY" ]; then \\
+            curl -f "\$SUPABASE_URL/rest/v1/" -H "apikey: \$SUPABASE_ANON_KEY"; \\
+        else \\
+            echo "Supabase environment variables not set"; \\
+        fi || exit 1
 
 # Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
@@ -413,7 +420,6 @@ services:
       - "8081:8081"
       - "9090:9090"
     volumes:
-      - app-data:/app/data
       - app-logs:/app/logs
       - app-backups:/app/backups
       - ./ssl:/app/config/ssl:ro
@@ -1032,10 +1038,8 @@ echo "💾 Starting system backup..."
 # Create backup directory
 mkdir -p "$BACKUP_DIR/$BACKUP_NAME"
 
-# Backup database
-if [ -f "data/devguard_production.db" ]; then
-    cp "data/devguard_production.db" "$BACKUP_DIR/$BACKUP_NAME/"
-fi
+# Note: Database backup not needed - using Supabase managed database
+echo "ℹ️  Database backup skipped - using Supabase managed database"
 
 # Backup configuration
 cp -r config "$BACKUP_DIR/$BACKUP_NAME/"
@@ -1076,12 +1080,15 @@ else
     echo "❌ WebSocket: Not available"
 fi
 
-# Check database
-if [ -f "data/devguard_production.db" ]; then
-    DB_SIZE=$(du -h data/devguard_production.db | cut -f1)
-    echo "✅ Database: Present ($DB_SIZE)"
+# Check Supabase connectivity
+if [[ -n "$SUPABASE_URL" && -n "$SUPABASE_ANON_KEY" ]]; then
+    if curl -s --max-time 10 -H "apikey: $SUPABASE_ANON_KEY" "$SUPABASE_URL/rest/v1/" > /dev/null; then
+        echo "✅ Supabase: Connected"
+    else
+        echo "❌ Supabase: Connection failed"
+    fi
 else
-    echo "❌ Database: Missing"
+    echo "⚠️  Supabase: Environment variables not set"
 fi
 
 # Check disk space
@@ -1290,7 +1297,7 @@ Recommended firewall rules:
 
 ### Database Issues
 
-1. Check database file: \`sqlite3 data/devguard_production.db ".schema"\`
+1. Check Supabase connectivity: \`curl -H "apikey: $SUPABASE_ANON_KEY" "$SUPABASE_URL/rest/v1/"\`
 2. Restore from backup: \`./restore_system.sh backups/latest_backup.tar.gz\`
 
 ## Support

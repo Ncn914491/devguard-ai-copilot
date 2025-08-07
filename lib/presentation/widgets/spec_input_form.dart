@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/database/services/services.dart';
 import '../../core/database/models/models.dart';
+import '../../core/validation/validation_result.dart';
 
 class SpecInputForm extends StatefulWidget {
   final Function(Specification) onSpecificationCreated;

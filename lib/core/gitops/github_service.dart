@@ -482,7 +482,7 @@ class GitHubService {
 
   /// Create pull request with enhanced parameters
   /// Satisfies Requirements: 3.4 (Creating pull requests with full API)
-  Future<GitHubPullRequest> createPullRequest({
+  Future<GitHubPullRequest> createPullRequestWithAuth({
     required String accessToken,
     required String repoOwner,
     required String repoName,

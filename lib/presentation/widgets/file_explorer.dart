@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/services/file_system_service.dart';
+import '../../core/services/supabase_file_system_service.dart';
 import '../../core/api/repository_api.dart';
+import '../../core/api/supabase_repository_api.dart';
 import 'merge_conflict_resolver.dart';
+import 'file_upload_widget.dart';
+import 'file_manager_widget.dart';
 
 /// File explorer widget for repository navigation
 class FileExplorer extends StatefulWidget {
@@ -22,8 +26,15 @@ class FileExplorer extends StatefulWidget {
 
 class _FileExplorerState extends State<FileExplorer> {
   final _authService = AuthService.instance;
+  final _repositoryAPI = RepositoryAPI.instance;
+  final _supabaseRepositoryAPI = SupabaseRepositoryAPI.instance;
+  final _fileSystemService = FileSystemService.instance;
+  final _supabaseFileSystemService = SupabaseFileSystemService.instance;
+
   final Map<String, bool> _expandedFolders = {};
   String? _selectedFile;
+  bool _useSupabaseStorage = true; // Toggle for using Supabase Storage
+  bool _showFileManager = false;
 
   // Mock file system structure
   final Map<String, FileSystemItem> _fileSystem = {
@@ -624,6 +635,36 @@ class _FileExplorerState extends State<FileExplorer> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
+                // Storage toggle
+                Tooltip(
+                  message: _useSupabaseStorage
+                      ? 'Using Supabase Storage'
+                      : 'Using Local Storage',
+                  child: IconButton(
+                    icon: Icon(
+                      _useSupabaseStorage ? Icons.cloud : Icons.folder,
+                      size: 16,
+                      color: _useSupabaseStorage ? Colors.blue : Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _useSupabaseStorage = !_useSupabaseStorage;
+                      });
+                    },
+                  ),
+                ),
+                // File manager toggle
+                Tooltip(
+                  message: 'File Manager',
+                  child: IconButton(
+                    icon: const Icon(Icons.upload_file, size: 16),
+                    onPressed: () {
+                      setState(() {
+                        _showFileManager = !_showFileManager;
+                      });
+                    },
+                  ),
+                ),
                 if (_authService.hasPermission('commit_code'))
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert, size: 16),
@@ -678,15 +719,347 @@ class _FileExplorerState extends State<FileExplorer> {
             ),
           ),
 
+          // File manager (when enabled)
+          if (_showFileManager) ...[
+            Container(
+              height: 300,
+              padding: const EdgeInsets.all(8),
+              child: FileManagerWidget(
+                bucket: _useSupabaseStorage
+                    ? SupabaseFileSystemService.projectFilesBucket
+                    : 'local-files',
+                pathPrefix: 'explorer',
+                allowUpload: _authService.hasPermission('commit_code'),
+                allowDownload: true,
+                allowDelete: _authService.hasPermission('commit_code'),
+                allowedExtensions: const [
+                  'dart',
+                  'js',
+                  'ts',
+                  'html',
+                  'css',
+                  'json',
+                  'yaml',
+                  'yml',
+                  'md',
+                  'txt',
+                  'py',
+                  'java',
+                  'cpp',
+                  'c',
+                  'h'
+                ],
+                maxFileSizeMB: 10,
+              ),
+            ),
+            const Divider(height: 1),
+          ],
+
           // File tree
           Expanded(
-            child: ListView(
-              children: _buildFileTree(_fileSystem, 0),
-            ),
+            child: _useSupabaseStorage
+                ? _buildSupabaseFileTree()
+                : ListView(
+                    children: _buildFileTree(_fileSystem, 0),
+                  ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildSupabaseFileTree() {
+    return FutureBuilder<List<CloudFileSystemNode>>(
+      future: _loadSupabaseFiles(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading files',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  snapshot.error.toString(),
+                  style: const TextStyle(color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => setState(() {}),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final files = snapshot.data ?? [];
+        if (files.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.folder_open, color: Colors.grey, size: 48),
+                SizedBox(height: 16),
+                Text(
+                  'No files found',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: files.length,
+          itemBuilder: (context, index) {
+            final file = files[index];
+            return _buildSupabaseFileItem(file);
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<CloudFileSystemNode>> _loadSupabaseFiles() async {
+    try {
+      // For demo purposes, use a mock repository ID
+      const repositoryId = 'demo-repo';
+
+      final response =
+          await _supabaseRepositoryAPI.getRepositoryFiles(repositoryId);
+      if (response.success && response.data != null) {
+        return response.data!;
+      } else {
+        throw Exception(response.message);
+      }
+    } catch (e) {
+      throw Exception('Failed to load files: $e');
+    }
+  }
+
+  Widget _buildSupabaseFileItem(CloudFileSystemNode file) {
+    final isSelected = _selectedFile == file.path;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color:
+            isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        leading: Icon(
+          _getFileIcon(file.name),
+          size: 16,
+          color: Colors.blue,
+        ),
+        title: Text(
+          file.name,
+          style: TextStyle(
+            fontSize: 13,
+            color: isSelected
+                ? Theme.of(context).colorScheme.onPrimaryContainer
+                : null,
+          ),
+        ),
+        subtitle: Text(
+          '${_formatFileSize(file.size)} • ${_formatDate(file.modifiedAt)}',
+          style: TextStyle(
+            fontSize: 11,
+            color: isSelected
+                ? Theme.of(context)
+                    .colorScheme
+                    .onPrimaryContainer
+                    .withOpacity(0.7)
+                : Colors.grey,
+          ),
+        ),
+        onTap: () {
+          setState(() {
+            _selectedFile = file.path;
+          });
+          widget.onFileSelected(file.path);
+        },
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, size: 14),
+          itemBuilder: (context) => [
+            const PopupMenuItem<String>(
+              value: 'download',
+              child: Row(
+                children: [
+                  Icon(Icons.download, size: 16),
+                  SizedBox(width: 8),
+                  Text('Download'),
+                ],
+              ),
+            ),
+            if (_authService.hasPermission('commit_code'))
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 16, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+          ],
+          onSelected: (action) => _handleSupabaseFileAction(action, file),
+        ),
+      ),
+    );
+  }
+
+  void _handleSupabaseFileAction(String action, CloudFileSystemNode file) {
+    switch (action) {
+      case 'download':
+        _downloadSupabaseFile(file);
+        break;
+      case 'delete':
+        _deleteSupabaseFile(file);
+        break;
+    }
+  }
+
+  Future<void> _downloadSupabaseFile(CloudFileSystemNode file) async {
+    try {
+      const repositoryId = 'demo-repo';
+      final data = await _supabaseFileSystemService.downloadRepositoryFile(
+        repositoryId: repositoryId,
+        filePath: file.path,
+      );
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Downloaded ${file.name} (${data.length} bytes)'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download ${file.name}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteSupabaseFile(CloudFileSystemNode file) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete File'),
+        content: Text('Are you sure you want to delete "${file.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        const repositoryId = 'demo-repo';
+        await _supabaseFileSystemService.deleteRepositoryFile(
+          repositoryId: repositoryId,
+          filePath: file.path,
+        );
+
+        // Refresh the file list
+        setState(() {});
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Deleted ${file.name}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete ${file.name}: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  IconData _getFileIcon(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+
+    switch (extension) {
+      case 'dart':
+        return Icons.code;
+      case 'js':
+      case 'ts':
+        return Icons.javascript;
+      case 'html':
+        return Icons.web;
+      case 'css':
+        return Icons.style;
+      case 'json':
+      case 'yaml':
+      case 'yml':
+        return Icons.data_object;
+      case 'md':
+        return Icons.text_snippet;
+      case 'txt':
+        return Icons.description;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'gif':
+        return Icons.image;
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   List<Widget> _buildFileTree(Map<String, FileSystemItem> items, int depth) {

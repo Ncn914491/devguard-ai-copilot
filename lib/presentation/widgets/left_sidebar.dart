@@ -49,6 +49,12 @@ class _LeftSidebarState extends State<LeftSidebar> {
       selectedIcon: Icons.rocket_launch,
     ),
     NavigationItem(
+      id: 'files',
+      label: 'Files',
+      icon: Icons.folder_outlined,
+      selectedIcon: Icons.folder,
+    ),
+    NavigationItem(
       id: 'audit',
       label: 'Audit Log',
       icon: Icons.history_outlined,
@@ -90,13 +96,16 @@ class _LeftSidebarState extends State<LeftSidebar> {
               ],
             ),
           ),
-          
+
           // Bottom Items
           Container(
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -115,7 +124,7 @@ class _LeftSidebarState extends State<LeftSidebar> {
 
   Widget _buildNavigationItem(NavigationItem item) {
     final isSelected = _selectedItem == item.id;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Material(
@@ -126,7 +135,7 @@ class _LeftSidebarState extends State<LeftSidebar> {
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: isSelected 
+              color: isSelected
                   ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                   : null,
               borderRadius: BorderRadius.circular(8),
@@ -137,9 +146,12 @@ class _LeftSidebarState extends State<LeftSidebar> {
                 Icon(
                   isSelected ? item.selectedIcon : item.icon,
                   size: 20,
-                  color: isSelected 
+                  color: isSelected
                       ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
                 ),
                 if (!widget.isCollapsed) ...[
                   const SizedBox(width: 16),
@@ -147,11 +159,15 @@ class _LeftSidebarState extends State<LeftSidebar> {
                     child: Text(
                       item.label,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: isSelected 
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      ),
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.8),
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                          ),
                     ),
                   ),
                 ],

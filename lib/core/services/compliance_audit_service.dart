@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
-import '../database/database_service.dart';
-import '../database/services/audit_log_service.dart';
+import '../database/services/services.dart';
 import '../database/models/audit_log.dart';
 
 /// Comprehensive audit logging and compliance service
@@ -17,7 +15,8 @@ class ComplianceAuditService {
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
 
-  Future<Database> get _db async => await DatabaseService.instance.database;
+  // Mock database for now
+  Future<dynamic> get _db async => null;
 
   /// Initialize compliance audit service
   Future<void> initialize() async {

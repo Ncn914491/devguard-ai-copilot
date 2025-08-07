@@ -16,15 +16,16 @@ services:
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=info
-      - DATABASE_PATH=/data/devguard.db
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - GITHUB_INTEGRATION_ENABLED=true
       - GITLAB_INTEGRATION_ENABLED=true
       - SECURITY_MONITORING_ENABLED=true
       - AUDIT_LOGGING_ENABLED=true
     
-    # Volumes for persistent data
+    # Volumes for persistent data (no database volume needed with Supabase)
     volumes:
-      - devguard_data:/data
       - devguard_logs:/var/log/devguard
       - devguard_config:/etc/devguard
       - /var/run/docker.sock:/var/run/docker.sock:ro  # For deployment monitoring
@@ -44,9 +45,9 @@ services:
           cpus: '0.5'
           memory: 512M
     
-    # Health check
+    # Health check with Supabase connectivity verification
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "devguard_ai_copilot"]
+      test: ["CMD", "sh", "-c", "pgrep -f devguard_ai_copilot && if [ -n \"$SUPABASE_URL\" ] && [ -n \"$SUPABASE_ANON_KEY\" ]; then curl -f $SUPABASE_URL/rest/v1/ -H 'apikey: $SUPABASE_ANON_KEY'; else echo 'Supabase env vars not set'; fi || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -205,10 +206,8 @@ services:
     networks:
       - devguard-network
 
-# Named volumes for persistent data
+# Named volumes for persistent data (no database volume needed with Supabase)
 volumes:
-  devguard_data:
-    driver: local
   devguard_logs:
     driver: local
   devguard_config:

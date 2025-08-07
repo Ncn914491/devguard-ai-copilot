@@ -3,6 +3,8 @@ import '../../core/database/models/task.dart';
 import '../../core/database/services/enhanced_task_service.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/api/websocket_service.dart';
+import '../../core/supabase/services/supabase_realtime_service.dart';
+import 'dart:async';
 
 /// Task Management Panel with confidentiality controls
 /// Satisfies Requirements: 5.1, 5.2, 5.3, 5.4, 5.5 (Task management with confidentiality)
@@ -32,6 +34,7 @@ class _TaskManagementPanelState extends State<TaskManagementPanel> {
   final _taskService = EnhancedTaskService.instance;
   final _authService = AuthService.instance;
   final _websocketService = WebSocketService.instance;
+  final _realtimeService = SupabaseRealtimeService.instance;
 
   List<Task> _tasks = [];
   bool _isLoading = true;
@@ -39,11 +42,21 @@ class _TaskManagementPanelState extends State<TaskManagementPanel> {
   String _selectedPriority = 'all';
   String _selectedConfidentiality = 'all';
 
+  // Real-time subscription
+  StreamSubscription<List<Task>>? _tasksSubscription;
+
   @override
   void initState() {
     super.initState();
     _loadTasks();
     _setupWebSocketListeners();
+    _setupRealtimeSubscriptions();
+  }
+
+  @override
+  void dispose() {
+    _tasksSubscription?.cancel();
+    super.dispose();
   }
 
   void _setupWebSocketListeners() {
@@ -52,6 +65,120 @@ class _TaskManagementPanelState extends State<TaskManagementPanel> {
         _loadTasks(); // Refresh tasks when updates are received
       }
     });
+  }
+
+  /// Set up real-time subscriptions for tasks
+  void _setupRealtimeSubscriptions() {
+    try {
+      // Build filter based on user permissions and widget configuration
+      String? filter;
+      if (!widget.showAllTasks && widget.filterAssigneeId != null) {
+        filter = 'assignee_id=${widget.filterAssigneeId}';
+      }
+
+      // Subscribe to tasks changes
+      _tasksSubscription = _realtimeService
+          .watchTable<Task>(
+        tableName: 'tasks',
+        fromMap: (map) => Task.fromMap(map),
+        filter: filter,
+        orderBy: 'created_at',
+        ascending: false,
+      )
+          .listen(
+        (tasks) {
+          if (mounted) {
+            // Apply additional filtering based on user permissions
+            final filteredTasks = _filterTasksByPermissions(tasks);
+            setState(() {
+              _tasks = filteredTasks;
+              _isLoading = false;
+            });
+
+            // Show notification for new high-priority tasks assigned to user
+            _checkForNewHighPriorityTasks(filteredTasks);
+          }
+        },
+        onError: (error) {
+          debugPrint('Real-time tasks error: $error');
+        },
+      );
+    } catch (e) {
+      debugPrint('Error setting up real-time task subscriptions: $e');
+      // Fall back to manual refresh if real-time fails
+    }
+  }
+
+  /// Filter tasks based on user permissions and confidentiality levels
+  List<Task> _filterTasksByPermissions(List<Task> tasks) {
+    return tasks.where((task) {
+      // Apply confidentiality filtering
+      if (_selectedConfidentiality != 'all' &&
+          task.confidentialityLevel != _selectedConfidentiality) {
+        return false;
+      }
+
+      // Apply priority filtering
+      if (_selectedPriority != 'all' && task.priority != _selectedPriority) {
+        return false;
+      }
+
+      // Apply status filtering
+      if (widget.filterStatus != null && task.status != widget.filterStatus) {
+        return false;
+      }
+
+      // Check user permissions for confidential tasks
+      if (task.confidentialityLevel == 'confidential' ||
+          task.confidentialityLevel == 'restricted') {
+        // Only show if user is authorized
+        return task.authorizedUsers.contains(widget.userId) ||
+            task.authorizedRoles.contains(widget.userRole) ||
+            task.assigneeId == widget.userId ||
+            widget.userRole == 'admin';
+      }
+
+      return true;
+    }).toList();
+  }
+
+  /// Check for new high-priority tasks and show notifications
+  void _checkForNewHighPriorityTasks(List<Task> newTasks) {
+    final highPriorityTasks = newTasks
+        .where((task) =>
+            (task.priority == 'high' || task.priority == 'critical') &&
+            task.assigneeId == widget.userId &&
+            task.status == 'to_do')
+        .toList();
+
+    if (highPriorityTasks.isNotEmpty && mounted) {
+      // Show snackbar for new high-priority tasks
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.priority_high, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${highPriorityTasks.length} new high-priority task${highPriorityTasks.length > 1 ? 's' : ''} assigned to you!',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'VIEW',
+            textColor: Colors.white,
+            onPressed: () {
+              // Could scroll to the new tasks or highlight them
+            },
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _loadTasks() async {

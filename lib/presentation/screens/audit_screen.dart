@@ -431,6 +431,88 @@ class _AuditScreenState extends State<AuditScreen> {
       selectedColor: Theme.of(context).colorScheme.primaryContainer,
     );
   }
+
+  void _showComplianceReportDialog(Map<String, dynamic> report) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Compliance Report'),
+        content: Text('Compliance report details: ${report.toString()}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuspiciousActivitiesDialog(List<dynamic> activities) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Suspicious Activities'),
+        content: Text('Found ${activities.length} suspicious activities'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        ElevatedButton.icon(
+          onPressed: () {
+            // Export audit logs
+          },
+          icon: const Icon(Icons.download),
+          label: const Text('Export'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          onPressed: () {
+            // Generate report
+          },
+          icon: const Icon(Icons.assessment),
+          label: const Text('Generate Report'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedFilters() {
+    return ExpansionTile(
+      title: const Text('Advanced Filters'),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'User ID',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Action Type',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _StatCard extends StatelessWidget {

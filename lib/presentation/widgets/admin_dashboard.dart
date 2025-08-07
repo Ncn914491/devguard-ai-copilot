@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../core/auth/auth_service.dart';
-import '../../core/database/services/services.dart';
+import '../../core/supabase/supabase_auth_service.dart';
+import '../../core/supabase/services/supabase_team_member_service.dart';
+import '../../core/supabase/services/supabase_task_service.dart';
+import '../../core/supabase/services/supabase_security_alert_service.dart';
 import '../screens/code_editor_screen.dart';
 import 'join_request_management.dart';
 import 'manual_member_addition.dart';
 import 'task_management_panel.dart';
+import 'realtime_status_indicator.dart';
+import 'supabase_stream_builder.dart';
 
 /// Admin dashboard widget with member onboarding features
 class AdminDashboard extends StatefulWidget {
@@ -16,14 +20,29 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard>
     with SingleTickerProviderStateMixin {
-  final _authService = AuthService.instance;
-  // Services are accessed directly when needed
+  final _authService = SupabaseAuthService.instance;
+  final _teamMemberService = SupabaseTeamMemberService.instance;
+  final _taskService = SupabaseTaskService.instance;
+  final _securityAlertService = SupabaseSecurityAlertService.instance;
   late TabController _tabController;
+
+  // Real-time data streams
+  Stream<List<dynamic>>? _teamMembersStream;
+  Stream<List<dynamic>>? _tasksStream;
+  Stream<List<dynamic>>? _securityAlertsStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
+    _initializeRealTimeStreams();
+  }
+
+  void _initializeRealTimeStreams() {
+    // Initialize real-time data streams
+    _teamMembersStream = _teamMemberService.watchAll();
+    _tasksStream = _taskService.watchAll();
+    _securityAlertsStream = _securityAlertService.watchAll();
   }
 
   @override
@@ -32,80 +51,167 @@ class _AdminDashboardState extends State<AdminDashboard>
     super.dispose();
   }
 
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else {
+      return '${difference.inDays} days ago';
+    }
+  }
+
+  Color _getSeverityColor(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return Colors.red;
+      case 'high':
+        return Colors.orange;
+      case 'medium':
+        return Colors.yellow.shade700;
+      case 'low':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else {
+      return '${difference.inDays} days ago';
+    }
+  }
+
   Widget _buildOverviewTab() {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // System Status Cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatusCard(
-                  'Active Users',
-                  '12',
-                  Icons.people,
-                  Colors.green,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatusCard(
-                  'Pending Requests',
-                  '3',
-                  Icons.pending_actions,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatusCard(
-                  'Security Alerts',
-                  '1',
-                  Icons.security,
-                  Colors.red,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+          // Real-time status indicator
+          const RealtimeStatusIndicator(),
+          const SizedBox(height: 16),
 
-          // Recent Activity
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          // System Status Cards with real-time data
+          StreamBuilder<List<dynamic>>(
+            stream: _teamMembersStream,
+            builder: (context, teamSnapshot) {
+              return StreamBuilder<List<dynamic>>(
+                stream: _securityAlertsStream,
+                builder: (context, alertsSnapshot) {
+                  final activeUsers = teamSnapshot.hasData
+                      ? teamSnapshot.data!
+                          .where((member) => member.status == 'active')
+                          .length
+                          .toString()
+                      : '...';
+                  final securityAlerts = alertsSnapshot.hasData
+                      ? alertsSnapshot.data!
+                          .where((alert) => alert.status == 'new')
+                          .length
+                          .toString()
+                      : '...';
+
+                  return Row(
                     children: [
-                      Icon(Icons.history, color: Colors.blue.shade700),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Recent Activity',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
+                      Expanded(
+                        child: _buildStatusCard(
+                          'Active Users',
+                          activeUsers,
+                          Icons.people,
+                          Colors.green,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildStatusCard(
+                          'Pending Requests',
+                          '3', // This would come from join requests service
+                          Icons.pending_actions,
+                          Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildStatusCard(
+                          'Security Alerts',
+                          securityAlerts,
+                          Icons.security,
+                          Colors.red,
                         ),
                       ),
                     ],
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+
+          // Recent Activity with real-time updates
+          StreamBuilder<List<dynamic>>(
+            stream: _securityAlertsStream,
+            builder: (context, alertsSnapshot) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.history, color: Colors.blue.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Recent Activity',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (alertsSnapshot.connectionState ==
+                              ConnectionState.waiting)
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (alertsSnapshot.hasData &&
+                          alertsSnapshot.data!.isNotEmpty) ...[
+                        ...alertsSnapshot.data!.take(3).map(
+                              (alert) => _buildActivityItem(
+                                'Security alert: ${alert.title}',
+                                _formatTimeAgo(alert.detectedAt),
+                              ),
+                            ),
+                      ],
+                      _buildActivityItem(
+                          'User john.doe@company.com joined the project',
+                          '2 hours ago'),
+                      _buildActivityItem(
+                          'Deployment completed successfully', '6 hours ago'),
+                      _buildActivityItem(
+                          'New join request from jane.smith@company.com',
+                          '1 day ago'),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildActivityItem(
-                      'User john.doe@company.com joined the project',
-                      '2 hours ago'),
-                  _buildActivityItem(
-                      'Security alert: Unusual login pattern detected',
-                      '4 hours ago'),
-                  _buildActivityItem(
-                      'Deployment completed successfully', '6 hours ago'),
-                  _buildActivityItem(
-                      'New join request from jane.smith@company.com',
-                      '1 day ago'),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -163,31 +269,69 @@ class _AdminDashboardState extends State<AdminDashboard>
           ),
           const SizedBox(height: 16),
 
-          // Active Security Alerts
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Active Security Alerts',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade700,
-                    ),
+          // Active Security Alerts with real-time updates
+          StreamBuilder<List<dynamic>>(
+            stream: _securityAlertsStream,
+            builder: (context, snapshot) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Active Security Alerts',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting)
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (snapshot.hasData && snapshot.data!.isNotEmpty) ...[
+                        ...snapshot.data!
+                            .where((alert) => alert.status == 'new')
+                            .map(
+                              (alert) => _buildSecurityAlert(
+                                alert.title,
+                                alert.description,
+                                alert.severity,
+                                _getSeverityColor(alert.severity),
+                              ),
+                            ),
+                      ] else if (snapshot.hasData &&
+                          snapshot.data!.isEmpty) ...[
+                        const Center(
+                          child: Text(
+                            'No active security alerts',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ] else if (snapshot.hasError) ...[
+                        Center(
+                          child: Text(
+                            'Error loading security alerts: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _buildSecurityAlert(
-                    'Unusual Login Pattern',
-                    'Multiple failed login attempts detected from IP 192.168.1.100',
-                    'High',
-                    Colors.red,
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),

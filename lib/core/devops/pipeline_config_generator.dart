@@ -440,7 +440,7 @@ class PipelineConfigGenerator {
           'DEBUG': 'true',
           'LOG_LEVEL': 'debug',
         },
-        secrets: ['DEV_API_KEY', 'DEV_DATABASE_URL'],
+        secrets: ['DEV_API_KEY', 'DEV_SUPABASE_URL', 'DEV_SUPABASE_ANON_KEY'],
         approvalRequired: false,
       ),
       'staging': EnvironmentConfig(
@@ -451,7 +451,11 @@ class PipelineConfigGenerator {
           'DEBUG': 'false',
           'LOG_LEVEL': 'info',
         },
-        secrets: ['STAGING_API_KEY', 'STAGING_DATABASE_URL'],
+        secrets: [
+          'STAGING_API_KEY',
+          'STAGING_SUPABASE_URL',
+          'STAGING_SUPABASE_ANON_KEY'
+        ],
         approvalRequired: true,
       ),
       'production': EnvironmentConfig(
@@ -462,7 +466,11 @@ class PipelineConfigGenerator {
           'DEBUG': 'false',
           'LOG_LEVEL': 'warn',
         },
-        secrets: ['PROD_API_KEY', 'PROD_DATABASE_URL'],
+        secrets: [
+          'PROD_API_KEY',
+          'PROD_SUPABASE_URL',
+          'PROD_SUPABASE_ANON_KEY'
+        ],
         approvalRequired: true,
       ),
     };

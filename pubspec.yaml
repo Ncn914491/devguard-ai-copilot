@@ -17,9 +17,8 @@ dependencies:
   # Navigation
   go_router: ^12.1.3
   
-  # Database
-  sqflite_common_ffi: ^2.3.0
-  path: ^1.8.3
+  # Database - Supabase
+  supabase_flutter: ^2.3.4
   
   # HTTP & API
   http: ^1.1.0
@@ -35,10 +34,30 @@ dependencies:
   # UI Components
   cupertino_icons: ^1.0.2
   
+  # Responsive Design
+  flutter_screenutil: ^5.9.0
+  responsive_builder: ^0.7.0
+  
+  # Platform Detection
+  universal_io: ^2.2.2
+  flutter_web_plugins:
+    sdk: flutter
+  
+  # Storage (Cross-platform)
+  shared_preferences: ^2.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # File Handling
+  file_picker: ^6.1.1
+  
   # Utilities
   uuid: ^4.2.1
   intl: ^0.19.0
   json_annotation: ^4.8.1
+  logging: ^1.2.0
+  flutter_dotenv: ^5.1.0
+  args: ^2.4.2
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +65,9 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   mockito: ^5.4.4
   build_runner: ^2.4.7
+  hive_generator: ^2.0.1
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
@@ -53,3 +75,4 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - .env

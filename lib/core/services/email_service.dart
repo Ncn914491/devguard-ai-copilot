@@ -1,5 +1,5 @@
 import 'dart:async';
-import '../database/services/audit_log_service.dart';
+import '../database/services/services.dart';
 
 /// Email service for sending notifications
 /// In production, this would integrate with a real email service like SendGrid, AWS SES, etc.
@@ -15,7 +15,8 @@ class EmailService {
     await _auditService.logAction(
       actionType: 'email_service_initialized',
       description: 'Email service initialized',
-      aiReasoning: 'Email service provides notification capabilities for user onboarding',
+      aiReasoning:
+          'Email service provides notification capabilities for user onboarding',
       contextData: {
         'service_type': 'mock_email_service',
       },
@@ -33,7 +34,7 @@ class EmailService {
     try {
       // In production, this would send a real email
       // For demo purposes, we'll just log the email content
-      
+
       final emailContent = _buildApprovalEmailContent(
         recipientName: recipientName,
         temporaryPassword: temporaryPassword,
@@ -44,7 +45,8 @@ class EmailService {
       await _auditService.logAction(
         actionType: 'approval_email_sent',
         description: 'Join request approval email sent',
-        aiReasoning: 'User approved for project access, credentials delivered via email',
+        aiReasoning:
+            'User approved for project access, credentials delivered via email',
         contextData: {
           'recipient_email': recipientEmail,
           'recipient_name': recipientName,
@@ -64,7 +66,6 @@ class EmailService {
       print('📧 END OF EMAIL\n');
 
       return true;
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'approval_email_failed',
@@ -112,7 +113,6 @@ class EmailService {
       print('📧 END OF EMAIL\n');
 
       return true;
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'rejection_email_failed',
@@ -142,7 +142,8 @@ class EmailService {
       await _auditService.logAction(
         actionType: 'password_reset_email_sent',
         description: 'Password reset email sent',
-        aiReasoning: 'Admin reset user password, new credentials delivered via email',
+        aiReasoning:
+            'Admin reset user password, new credentials delivered via email',
         contextData: {
           'recipient_email': recipientEmail,
           'recipient_name': recipientName,
@@ -159,7 +160,6 @@ class EmailService {
       print('📧 END OF EMAIL\n');
 
       return true;
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'password_reset_email_failed',

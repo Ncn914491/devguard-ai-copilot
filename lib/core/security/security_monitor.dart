@@ -15,7 +15,7 @@ class SecurityMonitor {
   final _uuid = const Uuid();
   final _securityAlertService = SecurityAlertService.instance;
   final _auditService = AuditLogService.instance;
-  
+
   Timer? _monitoringTimer;
   final Map<String, String> _configHashes = {};
   final List<String> _honeytokens = [];
@@ -29,11 +29,12 @@ class SecurityMonitor {
     await _initializeConfigMonitoring();
     await _initializeBaselines();
     _startMonitoring();
-    
+
     await _auditService.logAction(
       actionType: 'security_monitor_initialized',
       description: 'Security monitoring system initialized',
-      aiReasoning: 'Deployed honeytokens, initialized configuration monitoring, baselines, and started anomaly detection',
+      aiReasoning:
+          'Deployed honeytokens, initialized configuration monitoring, baselines, and started anomaly detection',
       contextData: {
         'honeytokens_deployed': _honeytokens.length,
         'config_files_monitored': _configHashes.length,
@@ -46,16 +47,41 @@ class SecurityMonitor {
   /// Satisfies Requirements: 3.1 (Honeytoken deployment)
   Future<void> _deployHoneytokens() async {
     final honeytokenData = [
-      {'type': 'credit_card', 'value': '4111-1111-1111-1111', 'table': 'users', 'column': 'credit_card'},
-      {'type': 'ssn', 'value': '123-45-6789', 'table': 'users', 'column': 'ssn'},
-      {'type': 'api_key', 'value': 'sk-fake-api-key-12345', 'table': 'api_keys', 'column': 'key_value'},
-      {'type': 'password_hash', 'value': r'$2b$12$fake.hash.for.honeytoken', 'table': 'users', 'column': 'password_hash'},
-      {'type': 'email', 'value': 'admin@honeytrap.internal', 'table': 'users', 'column': 'email'},
+      {
+        'type': 'credit_card',
+        'value': '4111-1111-1111-1111',
+        'table': 'users',
+        'column': 'credit_card'
+      },
+      {
+        'type': 'ssn',
+        'value': '123-45-6789',
+        'table': 'users',
+        'column': 'ssn'
+      },
+      {
+        'type': 'api_key',
+        'value': 'sk-fake-api-key-12345',
+        'table': 'api_keys',
+        'column': 'key_value'
+      },
+      {
+        'type': 'password_hash',
+        'value': r'$2b$12$fake.hash.for.honeytoken',
+        'table': 'users',
+        'column': 'password_hash'
+      },
+      {
+        'type': 'email',
+        'value': 'admin@honeytrap.internal',
+        'table': 'users',
+        'column': 'email'
+      },
     ];
 
     for (final token in honeytokenData) {
       _honeytokens.add(token['value']!);
-      
+
       // Log honeytoken deployment
       await _auditService.logAction(
         actionType: 'honeytoken_deployed',
@@ -106,13 +132,13 @@ class SecurityMonitor {
     for (final entry in _configHashes.entries) {
       final filePath = entry.key;
       final originalHash = entry.value;
-      
+
       try {
         final file = File(filePath);
         if (await file.exists()) {
           final content = await file.readAsString();
           final currentHash = sha256.convert(utf8.encode(content)).toString();
-          
+
           if (currentHash != originalHash) {
             await _createConfigDriftAlert(filePath, originalHash, currentHash);
             _configHashes[filePath] = currentHash; // Update hash
@@ -125,14 +151,17 @@ class SecurityMonitor {
   }
 
   /// Create configuration drift alert
-  Future<void> _createConfigDriftAlert(String filePath, String originalHash, String currentHash) async {
+  Future<void> _createConfigDriftAlert(
+      String filePath, String originalHash, String currentHash) async {
     final alert = SecurityAlert(
       id: _uuid.v4(),
       type: 'system_anomaly',
       severity: 'medium',
       title: 'Configuration Drift Detected',
-      description: 'Unexpected change detected in configuration file: $filePath',
-      aiExplanation: 'Configuration file $filePath has been modified. This could indicate unauthorized changes or system compromise. '
+      description:
+          'Unexpected change detected in configuration file: $filePath',
+      aiExplanation:
+          'Configuration file $filePath has been modified. This could indicate unauthorized changes or system compromise. '
           'Original hash: ${originalHash.substring(0, 8)}..., Current hash: ${currentHash.substring(0, 8)}...',
       status: 'new',
       detectedAt: DateTime.now(),
@@ -161,14 +190,15 @@ class SecurityMonitor {
     _queryBaselines['user_queries'] = 50;
     _queryBaselines['data_exports'] = 5;
     _queryBaselines['admin_queries'] = 20;
-    
+
     // Initialize configuration baselines
     await _updateConfigurationBaselines();
-    
+
     await _auditService.logAction(
       actionType: 'security_baselines_initialized',
       description: 'Security monitoring baselines established',
-      aiReasoning: 'Baselines set for query volumes, login patterns, and configuration states',
+      aiReasoning:
+          'Baselines set for query volumes, login patterns, and configuration states',
       contextData: {
         'query_baselines': _queryBaselines,
         'config_files_monitored': _configBaselines.length,
@@ -184,7 +214,7 @@ class SecurityMonitor {
       'config/security.json',
       '.env',
     ];
-    
+
     for (final filePath in configFiles) {
       try {
         final file = File(filePath);
@@ -213,7 +243,13 @@ class SecurityMonitor {
     // Simulate honeytoken access detection (2% chance for demo)
     final random = DateTime.now().millisecond;
     if (random % 50 == 0) {
-      final honeytokenType = ['credit_card', 'ssn', 'api_key', 'password_hash', 'email'][random % 5];
+      final honeytokenType = [
+        'credit_card',
+        'ssn',
+        'api_key',
+        'password_hash',
+        'email'
+      ][random % 5];
       await _createHoneytokenAlert(honeytokenType);
     }
   }
@@ -222,18 +258,19 @@ class SecurityMonitor {
   Future<void> _checkDataExportAnomalies() async {
     final currentTime = DateTime.now();
     final currentHour = currentTime.hour;
-    
+
     // Simulate query volume monitoring
     final simulatedQueryCount = _generateSimulatedQueryCount();
     final baseline = _queryBaselines['data_exports'] ?? 5;
-    
+
     // Check for volume anomalies (>200% of baseline)
     if (simulatedQueryCount > baseline * 2) {
       await _createDataExportAnomalyAlert(simulatedQueryCount, baseline);
     }
-    
+
     // Check for off-hours access (between 10 PM and 6 AM)
-    if ((currentHour >= 22 || currentHour <= 6) && simulatedQueryCount > baseline * 0.5) {
+    if ((currentHour >= 22 || currentHour <= 6) &&
+        simulatedQueryCount > baseline * 0.5) {
       await _createOffHoursAccessAlert(simulatedQueryCount, currentHour);
     }
   }
@@ -243,15 +280,16 @@ class SecurityMonitor {
     for (final entry in _configBaselines.entries) {
       final filePath = entry.key;
       final baselineHash = entry.value;
-      
+
       try {
         final file = File(filePath);
         if (await file.exists()) {
           final content = await file.readAsString();
           final currentHash = sha256.convert(utf8.encode(content)).toString();
-          
+
           if (currentHash != baselineHash) {
-            await _createEnhancedConfigDriftAlert(filePath, baselineHash, currentHash, content);
+            await _createEnhancedConfigDriftAlert(
+                filePath, baselineHash, currentHash, content);
             _configBaselines[filePath] = currentHash; // Update baseline
           }
         }
@@ -265,12 +303,12 @@ class SecurityMonitor {
   Future<void> _checkLoginAnomalies() async {
     // Simulate login attempt monitoring
     final random = DateTime.now().millisecond;
-    
+
     // Simulate failed login flood (3% chance)
     if (random % 33 == 0) {
       await _simulateFailedLoginFlood();
     }
-    
+
     // Simulate unusual login source (1% chance)
     if (random % 100 == 0) {
       await _createUnusualLoginSourceAlert();
@@ -281,12 +319,12 @@ class SecurityMonitor {
   int _generateSimulatedQueryCount() {
     final random = DateTime.now().millisecond;
     final baseCount = 3 + (random % 8); // 3-10 base queries
-    
+
     // Occasionally simulate spikes
     if (random % 20 == 0) {
       return baseCount * (2 + (random % 3)); // 2-4x spike
     }
-    
+
     return baseCount;
   }
 
@@ -319,11 +357,13 @@ class SecurityMonitor {
     );
 
     await _securityAlertService.createSecurityAlert(alert);
-    
+
     await _auditService.logAction(
       actionType: 'honeytoken_breach_detected',
-      description: 'Honeytoken access detected - immediate security alert generated',
-      aiReasoning: 'Honeytoken access indicates potential data breach or unauthorized system access',
+      description:
+          'Honeytoken access detected - immediate security alert generated',
+      aiReasoning:
+          'Honeytoken access indicates potential data breach or unauthorized system access',
       contextData: {
         'honeytoken_type': honeytokenType,
         'alert_id': alert.id,
@@ -333,9 +373,11 @@ class SecurityMonitor {
   }
 
   /// Create data export anomaly alert
-  Future<void> _createDataExportAnomalyAlert(int currentCount, int baseline) async {
-    final percentageIncrease = ((currentCount - baseline) / baseline * 100).round();
-    
+  Future<void> _createDataExportAnomalyAlert(
+      int currentCount, int baseline) async {
+    final percentageIncrease =
+        ((currentCount - baseline) / baseline * 100).round();
+
     final aiExplanation = await _generateAIExplanation(
       'data_export_anomaly',
       {
@@ -383,7 +425,8 @@ class SecurityMonitor {
       type: 'system_anomaly',
       severity: 'medium',
       title: 'Off-Hours Database Access',
-      description: 'Unusual database activity detected during off-hours ($hour:00)',
+      description:
+          'Unusual database activity detected during off-hours ($hour:00)',
       aiExplanation: aiExplanation,
       status: 'new',
       detectedAt: DateTime.now(),
@@ -400,14 +443,10 @@ class SecurityMonitor {
   }
 
   /// Create enhanced configuration drift alert
-  Future<void> _createEnhancedConfigDriftAlert(
-    String filePath, 
-    String baselineHash, 
-    String currentHash, 
-    String content
-  ) async {
+  Future<void> _createEnhancedConfigDriftAlert(String filePath,
+      String baselineHash, String currentHash, String content) async {
     final changeType = _analyzeConfigurationChange(content);
-    
+
     final aiExplanation = await _generateAIExplanation(
       'config_drift',
       {
@@ -445,7 +484,7 @@ class SecurityMonitor {
   Future<void> _simulateFailedLoginFlood() async {
     final sourceIP = '192.168.1.${DateTime.now().millisecond % 255}';
     final attemptCount = 5 + (DateTime.now().millisecond % 10); // 5-14 attempts
-    
+
     final aiExplanation = await _generateAIExplanation(
       'login_flood',
       {
@@ -479,8 +518,9 @@ class SecurityMonitor {
 
   /// Create unusual login source alert
   Future<void> _createUnusualLoginSourceAlert() async {
-    final suspiciousIP = '203.0.113.${DateTime.now().millisecond % 255}'; // RFC 5737 test IP
-    
+    final suspiciousIP =
+        '203.0.113.${DateTime.now().millisecond % 255}'; // RFC 5737 test IP
+
     final aiExplanation = await _generateAIExplanation(
       'unusual_login_source',
       {
@@ -513,10 +553,12 @@ class SecurityMonitor {
   }
 
   /// Generate AI explanation for security alerts using Gemini
-  Future<String> _generateAIExplanation(String alertType, Map<String, dynamic> context) async {
+  Future<String> _generateAIExplanation(
+      String alertType, Map<String, dynamic> context) async {
     try {
       final prompt = _buildExplanationPrompt(alertType, context);
-      final explanation = await GeminiService.instance.generateExplanation(prompt);
+      final explanation =
+          await GeminiService.instance.generateExplanation(prompt);
       return explanation ?? _getFallbackExplanation(alertType, context);
     } catch (e) {
       return _getFallbackExplanation(alertType, context);
@@ -524,7 +566,8 @@ class SecurityMonitor {
   }
 
   /// Build prompt for AI explanation generation
-  String _buildExplanationPrompt(String alertType, Map<String, dynamic> context) {
+  String _buildExplanationPrompt(
+      String alertType, Map<String, dynamic> context) {
     switch (alertType) {
       case 'honeytoken_access':
         return '''
@@ -623,7 +666,8 @@ Generate a concise explanation (2-3 sentences) explaining:
   }
 
   /// Get fallback explanation when AI generation fails
-  String _getFallbackExplanation(String alertType, Map<String, dynamic> context) {
+  String _getFallbackExplanation(
+      String alertType, Map<String, dynamic> context) {
     switch (alertType) {
       case 'honeytoken_access':
         return 'CRITICAL: Honeytoken access detected for ${context['honeytoken_type']}. This indicates potential data breach or unauthorized system access. Immediate investigation and system isolation recommended.';
@@ -650,11 +694,17 @@ Generate a concise explanation (2-3 sentences) explaining:
 
   /// Analyze configuration change type
   String _analyzeConfigurationChange(String content) {
-    if (content.contains('password') || content.contains('secret') || content.contains('key')) {
+    if (content.contains('password') ||
+        content.contains('secret') ||
+        content.contains('key')) {
       return 'credential_modification';
-    } else if (content.contains('admin') || content.contains('root') || content.contains('privilege')) {
+    } else if (content.contains('admin') ||
+        content.contains('root') ||
+        content.contains('privilege')) {
       return 'privilege_escalation';
-    } else if (content.contains('port') || content.contains('host') || content.contains('endpoint')) {
+    } else if (content.contains('port') ||
+        content.contains('host') ||
+        content.contains('endpoint')) {
       return 'network_configuration';
     } else if (content.contains('database') || content.contains('connection')) {
       return 'database_configuration';
@@ -665,11 +715,13 @@ Generate a concise explanation (2-3 sentences) explaining:
 
   /// Get configuration drift severity based on file and change type
   String _getConfigDriftSeverity(String filePath, String changeType) {
-    if (changeType == 'credential_modification' || changeType == 'privilege_escalation') {
+    if (changeType == 'credential_modification' ||
+        changeType == 'privilege_escalation') {
       return 'critical';
     } else if (filePath.contains('security') || filePath.contains('.env')) {
       return 'high';
-    } else if (changeType == 'network_configuration' || changeType == 'database_configuration') {
+    } else if (changeType == 'network_configuration' ||
+        changeType == 'database_configuration') {
       return 'medium';
     } else {
       return 'low';
@@ -678,10 +730,10 @@ Generate a concise explanation (2-3 sentences) explaining:
 
   /// Determine if rollback should be suggested
   bool _shouldSuggestRollback(String filePath, String changeType) {
-    return changeType == 'credential_modification' || 
-           changeType == 'privilege_escalation' ||
-           filePath.contains('security') ||
-           filePath.contains('.env');
+    return changeType == 'credential_modification' ||
+        changeType == 'privilege_escalation' ||
+        filePath.contains('security') ||
+        filePath.contains('.env');
   }
 
   /// Create network anomaly alert
@@ -692,7 +744,8 @@ Generate a concise explanation (2-3 sentences) explaining:
       severity: 'medium',
       title: 'Unusual Network Activity',
       description: 'Detected abnormal network connection patterns',
-      aiExplanation: 'Network monitoring has identified unusual connection patterns including connections to suspicious IP addresses and abnormal data transfer volumes. '
+      aiExplanation:
+          'Network monitoring has identified unusual connection patterns including connections to suspicious IP addresses and abnormal data transfer volumes. '
           'This could indicate command and control communication or data exfiltration.',
       status: 'new',
       detectedAt: DateTime.now(),
@@ -709,7 +762,8 @@ Generate a concise explanation (2-3 sentences) explaining:
 
   /// Simulate honeytoken access detection
   /// Satisfies Requirements: 3.2 (Honeytoken access triggers)
-  Future<void> simulateHoneytokenAccess(String tokenValue, String accessContext) async {
+  Future<void> simulateHoneytokenAccess(
+      String tokenValue, String accessContext) async {
     if (_honeytokens.contains(tokenValue)) {
       await _securityAlertService.createHoneytokenAlert(
         'credit_card',
@@ -725,7 +779,7 @@ Generate a concise explanation (2-3 sentences) explaining:
     if (!successful) {
       _failedLoginAttempts++;
       _lastFailedLogin = DateTime.now();
-      
+
       // Check for authentication flood
       if (_failedLoginAttempts >= 5) {
         await _createAuthFloodAlert(username);
@@ -743,8 +797,10 @@ Generate a concise explanation (2-3 sentences) explaining:
       type: 'auth_flood',
       severity: 'high',
       title: 'Authentication Flood Detected',
-      description: 'Multiple failed login attempts detected for user: $username',
-      aiExplanation: 'Detected multiple consecutive failed login attempts for user $username. This pattern suggests a brute force attack or credential stuffing attempt. '
+      description:
+          'Multiple failed login attempts detected for user: $username',
+      aiExplanation:
+          'Detected multiple consecutive failed login attempts for user $username. This pattern suggests a brute force attack or credential stuffing attempt. '
           'The account should be temporarily locked and the source IP investigated.',
       status: 'new',
       detectedAt: DateTime.now(),
@@ -764,9 +820,12 @@ Generate a concise explanation (2-3 sentences) explaining:
   /// Satisfies Requirements: 3.5 (Security status reporting)
   Future<SecurityStatus> getSecurityStatus() async {
     final alerts = await _securityAlertService.getAllSecurityAlerts();
-    final activeAlerts = alerts.where((a) => a.status == 'new' || a.status == 'investigating').toList();
-    final criticalAlerts = activeAlerts.where((a) => a.severity == 'critical').toList();
-    
+    final activeAlerts = alerts
+        .where((a) => a.status == 'new' || a.status == 'investigating')
+        .toList();
+    final criticalAlerts =
+        activeAlerts.where((a) => a.severity == 'critical').toList();
+
     return SecurityStatus(
       isMonitoring: _monitoringTimer?.isActive ?? false,
       honeytokensDeployed: _honeytokens.length,
@@ -823,7 +882,8 @@ Generate a concise explanation (2-3 sentences) explaining:
   }
 
   /// Configure alert thresholds for project
-  Future<void> configureAlertThresholds(String projectId, Map<String, String> thresholds) async {
+  Future<void> configureAlertThresholds(
+      String projectId, Map<String, String> thresholds) async {
     // Implementation would configure alert thresholds
     await _auditService.logAction(
       actionType: 'project_alert_thresholds_configured',
@@ -836,9 +896,6 @@ Generate a concise explanation (2-3 sentences) explaining:
   }
 
   /// Test helper methods for simulating security events
-  Future<void> simulateHoneytokenAccess(String honeytokenType) async {
-    await _createHoneytokenAlert(honeytokenType);
-  }
 
   Future<void> simulateDataExportAnomaly(int currentCount, int baseline) async {
     await _createDataExportAnomalyAlert(currentCount, baseline);
@@ -854,7 +911,8 @@ Generate a concise explanation (2-3 sentences) explaining:
     String baselineHash,
     String currentHash,
   ) async {
-    await _createEnhancedConfigDriftAlert(filePath, baselineHash, currentHash, 'test content');
+    await _createEnhancedConfigDriftAlert(
+        filePath, baselineHash, currentHash, 'test content');
   }
 
   Future<void> simulateLoginFlood(String sourceIP, int attemptCount) async {

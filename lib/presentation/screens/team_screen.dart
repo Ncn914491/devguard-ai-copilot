@@ -4,6 +4,10 @@ import '../../core/database/models/models.dart';
 import '../../core/services/onboarding_service.dart';
 import '../../core/models/join_request.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/supabase/services/supabase_realtime_service.dart';
+import '../../core/supabase/services/supabase_team_member_service.dart';
+import '../../core/supabase/services/supabase_task_service.dart';
+import 'dart:async';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -18,6 +22,7 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
   final _specService = SpecService.instance;
   final _onboardingService = OnboardingService.instance;
   final _authService = AuthService.instance;
+  final _realtimeService = SupabaseRealtimeService.instance;
 
   List<TeamMember> _teamMembers = [];
   List<Task> _tasks = [];
@@ -26,10 +31,72 @@ class _TeamScreenState extends State<TeamScreen> with TickerProviderStateMixin {
   bool _isLoading = true;
   int _selectedTabIndex = 0;
 
+  // Real-time subscriptions
+  StreamSubscription<List<TeamMember>>? _teamMembersSubscription;
+  StreamSubscription<List<Task>>? _tasksSubscription;
+
   @override
   void initState() {
     super.initState();
     _loadTeamData();
+    _setupRealtimeSubscriptions();
+  }
+
+  @override
+  void dispose() {
+    _teamMembersSubscription?.cancel();
+    _tasksSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Set up real-time subscriptions for team data
+  void _setupRealtimeSubscriptions() {
+    try {
+      // Subscribe to team members changes
+      _teamMembersSubscription = _realtimeService
+          .watchTable<TeamMember>(
+        tableName: 'team_members',
+        fromMap: (map) => TeamMember.fromMap(map),
+        orderBy: 'name',
+        ascending: true,
+      )
+          .listen(
+        (members) {
+          if (mounted) {
+            setState(() {
+              _teamMembers = members;
+            });
+          }
+        },
+        onError: (error) {
+          debugPrint('Real-time team members error: $error');
+        },
+      );
+
+      // Subscribe to tasks changes
+      _tasksSubscription = _realtimeService
+          .watchTable<Task>(
+        tableName: 'tasks',
+        fromMap: (map) => Task.fromMap(map),
+        orderBy: 'created_at',
+        ascending: false,
+      )
+          .listen(
+        (tasks) {
+          if (mounted) {
+            setState(() {
+              _tasks = tasks;
+            });
+          }
+        },
+        onError: (error) {
+          debugPrint('Real-time tasks error: $error');
+        },
+      );
+    } catch (e) {
+      debugPrint('Error setting up real-time subscriptions: $e');
+      // Fall back to manual refresh if real-time fails
+    }
   }
 
   Future<void> _loadTeamData() async {

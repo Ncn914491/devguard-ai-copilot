@@ -116,10 +116,10 @@ APP_ENVIRONMENT=production
 APP_DEBUG=false
 APP_PORT=8080
 
-# Database Configuration
-DATABASE_TYPE=sqlite
-DATABASE_PATH=./data/devguard.db
-DATABASE_BACKUP_PATH=./backups
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 # Security Configuration
 JWT_SECRET=your_super_secure_jwt_secret_key_here
@@ -183,30 +183,32 @@ mkdir -p scripts/{deployment,maintenance}
 
 ## Database Configuration
 
-### SQLite Configuration (Default)
+### Supabase Configuration (Primary Backend)
 
-SQLite is used as the default database for simplicity and portability:
+The application uses Supabase as the primary backend, providing PostgreSQL database, authentication, real-time capabilities, and storage:
 
 ```bash
-# Create database directory
-mkdir -p data/database
-
-# Set proper permissions
-chmod 755 data/database
-chmod 644 data/database/devguard.db (after creation)
+# Supabase configuration is handled through environment variables
+# No local database setup required
 ```
 
-### Database Migration
+### Supabase Project Setup
 
-Run database migrations during deployment:
+1. Create a Supabase project at https://supabase.com
+2. Get your project URL and anon key from the project settings
+3. Configure environment variables (see Environment Variables section)
+4. Run database migrations through Supabase dashboard or CLI
+
+### Database Migration (Legacy SQLite to Supabase)
+
+If migrating from an existing SQLite installation:
 
 ```bash
-# Run migrations
-flutter packages get
-dart run lib/core/database/migrations/run_migrations.dart
+# Run the migration script
+dart run scripts/run_migration.dart
 
-# Verify database schema
-sqlite3 data/database/devguard.db ".schema"
+# Verify migration
+dart run lib/core/supabase/migrations/migration_verification_service.dart
 ```
 
 ### Database Backup Script

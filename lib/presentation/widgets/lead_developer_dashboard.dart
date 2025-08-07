@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../core/auth/auth_service.dart';
-import '../../core/database/services/services.dart';
+import '../../core/supabase/supabase_auth_service.dart';
+import '../../core/supabase/services/supabase_task_service.dart';
+import '../../core/supabase/services/supabase_team_member_service.dart';
 import '../screens/code_editor_screen.dart';
 import 'task_management_panel.dart';
+import 'realtime_status_indicator.dart';
 
 /// Lead Developer dashboard widget with team management features
 class LeadDeveloperDashboard extends StatefulWidget {
@@ -14,15 +16,26 @@ class LeadDeveloperDashboard extends StatefulWidget {
 
 class _LeadDeveloperDashboardState extends State<LeadDeveloperDashboard>
     with SingleTickerProviderStateMixin {
-  final _authService = AuthService.instance;
-  final _taskService = TaskService.instance;
-  final _teamMemberService = TeamMemberService.instance;
+  final _authService = SupabaseAuthService.instance;
+  final _taskService = SupabaseTaskService.instance;
+  final _teamMemberService = SupabaseTeamMemberService.instance;
   late TabController _tabController;
+
+  // Real-time data streams
+  Stream<List<dynamic>>? _tasksStream;
+  Stream<List<dynamic>>? _teamMembersStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _initializeRealTimeStreams();
+  }
+
+  void _initializeRealTimeStreams() {
+    // Initialize real-time data streams
+    _tasksStream = _taskService.watchAll();
+    _teamMembersStream = _teamMemberService.watchAll();
   }
 
   @override

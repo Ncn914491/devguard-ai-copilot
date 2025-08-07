@@ -43,7 +43,7 @@ class _LandingScreenState extends State<LandingScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).primaryColor.withOpacity(0.1),
+              Theme.of(context).primaryColor.withValues(alpha: 0.1),
               Theme.of(context).colorScheme.surface,
             ],
           ),
@@ -98,7 +98,7 @@ class _LandingScreenState extends State<LandingScreen>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -336,10 +336,10 @@ class _LandingScreenState extends State<LandingScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(0.1),
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Theme.of(context).primaryColor.withOpacity(0.3),
+          color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
         ),
       ),
       child: Text(

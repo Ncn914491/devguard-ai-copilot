@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../core/auth/auth_service.dart';
-import '../../core/database/services/services.dart';
+import '../../core/supabase/supabase_auth_service.dart';
+import '../../core/supabase/services/supabase_task_service.dart';
 import '../screens/code_editor_screen.dart';
 import 'task_management_panel.dart';
+import 'realtime_status_indicator.dart';
 
 /// Developer dashboard widget with task and repository access
 class DeveloperDashboard extends StatefulWidget {
@@ -14,14 +15,23 @@ class DeveloperDashboard extends StatefulWidget {
 
 class _DeveloperDashboardState extends State<DeveloperDashboard>
     with SingleTickerProviderStateMixin {
-  final _authService = AuthService.instance;
-  final _taskService = TaskService.instance;
+  final _authService = SupabaseAuthService.instance;
+  final _taskService = SupabaseTaskService.instance;
   late TabController _tabController;
+
+  // Real-time data streams
+  Stream<List<dynamic>>? _tasksStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _initializeRealTimeStreams();
+  }
+
+  void _initializeRealTimeStreams() {
+    // Initialize real-time data streams
+    _tasksStream = _taskService.watchAll();
   }
 
   @override

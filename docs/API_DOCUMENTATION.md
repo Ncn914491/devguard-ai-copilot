@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides comprehensive API documentation for the DevGuard AI Copilot application. The API follows RESTful principles and includes authentication, authorization, and comprehensive error handling.
+This document provides comprehensive API documentation for the DevGuard AI Copilot application. The API is built on Supabase backend infrastructure, providing real-time capabilities, PostgreSQL database, and integrated authentication. The API follows RESTful principles and includes comprehensive error handling with Row-Level Security (RLS) policies.
 
 ## Table of Contents
 
@@ -19,61 +19,53 @@ This document provides comprehensive API documentation for the DevGuard AI Copil
 
 ## Authentication
 
-All API endpoints require authentication using JWT tokens. The application supports multiple authentication methods:
+All API endpoints require authentication using Supabase Auth JWT tokens. The application leverages Supabase's built-in authentication system with Row-Level Security (RLS) policies for data access control. The application supports multiple authentication methods:
 
 ### Authentication Methods
 
-#### 1. Email/Password Authentication
+#### 1. Email/Password Authentication (Supabase Auth)
 
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "SecurePassword123!"
-}
+```dart
+// Using Supabase Flutter SDK
+final response = await supabase.auth.signInWithPassword(
+  email: 'user@example.com',
+  password: 'SecurePassword123!',
+);
 ```
 
 **Response:**
 ```json
 {
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "refresh_token_here",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "refresh_token_here",
   "user": {
     "id": "user-123",
     "email": "user@example.com",
-    "name": "John Doe",
-    "role": "developer",
-    "permissions": ["code_access", "task_execution"]
+    "user_metadata": {
+      "name": "John Doe",
+      "role": "developer"
+    }
   },
-  "expiresAt": "2024-12-31T23:59:59Z"
+  "expires_at": 1640995200
 }
 ```
 
-#### 2. GitHub OAuth Authentication
+#### 2. GitHub OAuth Authentication (Supabase Auth)
 
-```http
-POST /api/v1/auth/github
-Content-Type: application/json
-
-{
-  "code": "github_oauth_code",
-  "state": "random_state_string"
-}
+```dart
+// Using Supabase Flutter SDK
+final response = await supabase.auth.signInWithOAuth(
+  Provider.github,
+  redirectTo: 'your-app://callback',
+);
 ```
 
-#### 3. Token Refresh
+#### 3. Token Refresh (Automatic with Supabase)
 
-```http
-POST /api/v1/auth/refresh
-Content-Type: application/json
-Authorization: Bearer <refresh_token>
-
-{
-  "refreshToken": "refresh_token_here"
-}
+```dart
+// Supabase handles token refresh automatically
+// Manual refresh if needed:
+final response = await supabase.auth.refreshSession();
 ```
 
 ### Token Validation
@@ -85,10 +77,40 @@ Authorization: Bearer <jwt_token>
 
 ### Logout
 
-```http
-POST /api/v1/auth/logout
-Authorization: Bearer <jwt_token>
+```dart
+await supabase.auth.signOut();
 ```
+
+### Real-time Authentication State
+
+```dart
+// Listen to authentication state changes
+supabase.auth.onAuthStateChange.listen((data) {
+  final AuthChangeEvent event = data.event;
+  final Session? session = data.session;
+  
+  switch (event) {
+    case AuthChangeEvent.signedIn:
+      // User signed in
+      break;
+    case AuthChangeEvent.signedOut:
+      // User signed out
+      break;
+    case AuthChangeEvent.tokenRefreshed:
+      // Token refreshed
+      break;
+  }
+});
+```
+
+### Row-Level Security (RLS)
+
+All database operations are protected by RLS policies that automatically filter data based on the authenticated user's role and permissions. The following roles are supported:
+
+- **admin**: Full access to all data
+- **lead_developer**: Access to team-related data and assigned projects
+- **developer**: Access to assigned tasks and public data
+- **viewer**: Read-only access to public data
 
 ## User Management API
 

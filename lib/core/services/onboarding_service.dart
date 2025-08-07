@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/join_request.dart';
 import '../database/services/audit_log_service.dart';
 import '../database/services/join_request_service.dart';
-import '../database/services/user_service.dart';
+import '../database/services/user_service.dart' as user_service;
 import '../auth/auth_service.dart';
 import 'email_service.dart';
 
@@ -16,7 +16,7 @@ class OnboardingService {
   final _uuid = const Uuid();
   final _auditService = AuditLogService.instance;
   final _joinRequestService = JoinRequestService.instance;
-  final _userService = UserService.instance;
+  final _userService = user_service.UserService.instance;
   final _authService = AuthService.instance;
   final _emailService = EmailService.instance;
 
@@ -177,7 +177,7 @@ class OnboardingService {
 
       // Create user account
       final temporaryPassword = _generateTemporaryPassword();
-      final newUser = User(
+      final newUser = user_service.User(
         id: _uuid.v4(),
         email: request.email,
         name: request.name,
@@ -186,6 +186,7 @@ class OnboardingService {
         passwordHash: _hashPassword(temporaryPassword),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        lastLogin: null,
       );
 
       await _userService.createUser(newUser);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/services/project_service.dart';
+import '../../core/services/project_service_fast.dart';
+import '../../core/supabase/supabase_auth_service.dart';
 
 /// Admin signup form for creating new projects
 class AdminSignupForm extends StatefulWidget {
@@ -41,49 +42,48 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
       child: Stepper(
         currentStep: _currentStep,
         onStepTapped: (step) {
-          if (step <= _currentStep) {
+          // Allow navigation to previous steps only
+          if (step < _currentStep) {
             setState(() {
               _currentStep = step;
             });
           }
         },
         controlsBuilder: (context, details) {
-          return Row(
-            children: [
-              if (details.stepIndex > 0)
-                TextButton(
-                  onPressed: details.onStepCancel,
-                  child: const Text('Back'),
+          return Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Row(
+              children: [
+                if (details.stepIndex > 0)
+                  TextButton(
+                    onPressed: _isLoading ? null : details.onStepCancel,
+                    child: const Text('Back'),
+                  ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          if (details.stepIndex == 2) {
+                            _createProject();
+                          } else {
+                            _handleNextStep();
+                          }
+                        },
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          details.stepIndex == 2 ? 'Create Project' : 'Next'),
                 ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        if (details.stepIndex == 2) {
-                          _createProject();
-                        } else {
-                          details.onStepContinue?.call();
-                        }
-                      },
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(details.stepIndex == 2 ? 'Create Project' : 'Next'),
-              ),
-            ],
+              ],
+            ),
           );
         },
-        onStepContinue: () {
-          if (_validateCurrentStep()) {
-            setState(() {
-              _currentStep++;
-            });
-          }
-        },
+        onStepContinue: _handleNextStep,
         onStepCancel: () {
           if (_currentStep > 0) {
             setState(() {
@@ -136,6 +136,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         ),
         const SizedBox(height: 24),
         TextFormField(
+          key: const Key('name_field'),
           controller: _nameController,
           decoration: const InputDecoration(
             labelText: 'Full Name',
@@ -151,6 +152,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+          key: const Key('email_field'),
           controller: _emailController,
           decoration: const InputDecoration(
             labelText: 'Email Address',
@@ -170,6 +172,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+          key: const Key('password_field'),
           controller: _passwordController,
           decoration: InputDecoration(
             labelText: 'Password',
@@ -198,6 +201,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+          key: const Key('confirm_password_field'),
           controller: _confirmPasswordController,
           decoration: InputDecoration(
             labelText: 'Confirm Password',
@@ -246,6 +250,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         ),
         const SizedBox(height: 24),
         TextFormField(
+          key: const Key('project_name_field'),
           controller: _projectNameController,
           decoration: const InputDecoration(
             labelText: 'Project Name',
@@ -264,6 +269,7 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+          key: const Key('project_description_field'),
           controller: _projectDescriptionController,
           decoration: const InputDecoration(
             labelText: 'Project Description',
@@ -346,16 +352,76 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
     );
   }
 
+  void _handleNextStep() {
+    if (_validateCurrentStep()) {
+      setState(() {
+        _currentStep++;
+      });
+    }
+  }
+
   bool _validateCurrentStep() {
     switch (_currentStep) {
       case 0:
-        return _formKey.currentState?.validate() ?? false;
+        // Validate admin account fields
+        if (_nameController.text.trim().isEmpty) {
+          _showValidationError('Please enter your full name');
+          return false;
+        }
+        if (_emailController.text.trim().isEmpty) {
+          _showValidationError('Please enter your email address');
+          return false;
+        }
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+            .hasMatch(_emailController.text)) {
+          _showValidationError('Please enter a valid email address');
+          return false;
+        }
+        if (_passwordController.text.isEmpty) {
+          _showValidationError('Please enter a password');
+          return false;
+        }
+        if (_passwordController.text.length < 8) {
+          _showValidationError('Password must be at least 8 characters long');
+          return false;
+        }
+        if (_confirmPasswordController.text != _passwordController.text) {
+          _showValidationError('Passwords do not match');
+          return false;
+        }
+        return true;
       case 1:
-        return _formKey.currentState?.validate() ?? false;
+        // Validate project details
+        if (_projectNameController.text.trim().isEmpty) {
+          _showValidationError('Please enter a project name');
+          return false;
+        }
+        if (_projectNameController.text.length < 3) {
+          _showValidationError(
+              'Project name must be at least 3 characters long');
+          return false;
+        }
+        if (_projectDescriptionController.text.trim().isEmpty) {
+          _showValidationError('Please enter a project description');
+          return false;
+        }
+        return true;
       case 2:
         return true;
       default:
         return false;
+    }
+  }
+
+  void _showValidationError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -367,7 +433,31 @@ class _AdminSignupFormState extends State<AdminSignupForm> {
     });
 
     try {
-      final result = await ProjectService.instance.createProjectWithAdmin(
+      // First, create the admin user account with Supabase
+      final authResult = await SupabaseAuthService.instance.signUp(
+        _emailController.text.trim(),
+        _passwordController.text,
+        metadata: {
+          'name': _nameController.text.trim(),
+          'role': 'admin',
+        },
+      );
+
+      if (!authResult.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Failed to create admin account: ${authResult.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Then create the project
+      final result = await FastProjectService.instance.createProjectWithAdmin(
         adminName: _nameController.text.trim(),
         adminEmail: _emailController.text.trim(),
         adminPassword: _passwordController.text,

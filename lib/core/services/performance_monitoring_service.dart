@@ -371,6 +371,23 @@ class PerformanceMonitoringService {
         }
         break;
 
+      case BottleneckType.disk:
+        // Optimize disk usage
+        if (bottleneck.description.contains('High disk usage')) {
+          // Could trigger cleanup or compression
+          debugPrint('Applied disk optimization: ${bottleneck.recommendation}');
+        }
+        break;
+
+      case BottleneckType.network:
+        // Optimize network usage
+        if (bottleneck.description.contains('High network latency')) {
+          // Could adjust connection settings
+          debugPrint(
+              'Applied network optimization: ${bottleneck.recommendation}');
+        }
+        break;
+
       case BottleneckType.cpu:
         // Optimize CPU usage
         if (bottleneck.description.contains('High CPU usage')) {

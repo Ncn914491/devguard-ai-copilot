@@ -141,7 +141,6 @@ class GitIntegration {
         relatedPullRequests: [],
         dependencies: [],
         blockedBy: [],
-        dependencies: [],
         createdAt: DateTime.now(),
         dueDate: DateTime.now().add(const Duration(days: 7)),
       );
@@ -493,7 +492,7 @@ class GitIntegration {
     }
 
     try {
-      final labels = [task.type, task.priority];
+      final labels = [task.type, task.priority].cast<String>();
 
       if (_gitProvider == 'github') {
         await _githubService.createIssue(task.title, task.description,

@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/project.dart';
 import '../database/services/audit_log_service.dart';
 import '../database/services/snapshot_service.dart';
+import '../database/models/snapshot.dart';
 import '../auth/auth_service.dart';
 import '../security/security_monitor.dart';
 import '../gitops/git_integration.dart';
@@ -19,12 +20,12 @@ class ProjectService {
   final _authService = AuthService.instance;
   final _securityMonitor = SecurityMonitor.instance;
   final _gitIntegration = GitIntegration.instance;
-  
+
   // In-memory storage for demo purposes
   // In production, this would be stored in database
   final List<Project> _projects = [];
-  
-  final StreamController<List<Project>> _projectsController = 
+
+  final StreamController<List<Project>> _projectsController =
       StreamController<List<Project>>.broadcast();
 
   /// Stream of projects for real-time updates
@@ -35,7 +36,8 @@ class ProjectService {
     await _auditService.logAction(
       actionType: 'project_service_initialized',
       description: 'Project service initialized',
-      aiReasoning: 'Project service manages project lifecycle and bootstrapping',
+      aiReasoning:
+          'Project service manages project lifecycle and bootstrapping',
       contextData: {
         'existing_projects': _projects.length,
       },
@@ -52,10 +54,10 @@ class ProjectService {
   }) async {
     try {
       // Validate input
-      if (adminName.trim().isEmpty || 
-          adminEmail.trim().isEmpty || 
+      if (adminName.trim().isEmpty ||
+          adminEmail.trim().isEmpty ||
           adminPassword.isEmpty ||
-          projectName.trim().isEmpty || 
+          projectName.trim().isEmpty ||
           projectDescription.trim().isEmpty) {
         return ProjectCreationResult(
           success: false,
@@ -73,7 +75,8 @@ class ProjectService {
       }
 
       // Check if project name already exists
-      if (_projects.any((p) => p.name.toLowerCase() == projectName.toLowerCase())) {
+      if (_projects
+          .any((p) => p.name.toLowerCase() == projectName.toLowerCase())) {
         return ProjectCreationResult(
           success: false,
           message: 'A project with this name already exists',
@@ -105,14 +108,15 @@ class ProjectService {
       _projects.add(project);
       _projectsController.add(List.from(_projects));
 
-      // Initialize project infrastructure
-      await _initializeProjectInfrastructure(project);
+      // Auto-login the new admin first (for immediate UI response)
+      await _authService.authenticateUser(adminUser);
 
       // Log project creation
       await _auditService.logAction(
         actionType: 'project_created',
         description: 'New project created with initial admin',
-        aiReasoning: 'User created new project and became initial administrator',
+        aiReasoning:
+            'User created new project and became initial administrator',
         contextData: {
           'project_id': project.id,
           'project_name': project.name,
@@ -122,16 +126,16 @@ class ProjectService {
         userId: adminUser.id,
       );
 
-      // Auto-login the new admin
-      await _authService.authenticateUser(adminUser);
+      // Initialize project infrastructure asynchronously (don't wait)
+      _initializeProjectInfrastructureAsync(project);
 
       return ProjectCreationResult(
         success: true,
-        message: 'Project created successfully! You are now logged in as the administrator.',
+        message:
+            'Project created successfully! You are now logged in as the administrator.',
         project: project,
         adminUser: adminUser,
       );
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'project_creation_error',
@@ -155,38 +159,44 @@ class ProjectService {
     try {
       // 1. Initialize Git repository
       await _initializeGitRepository(project);
-      
+
       // 2. Create initial security baseline
       await _initializeSecurityBaseline(project);
-      
+
       // 3. Create initial snapshot
       await _createInitialSnapshot(project);
-      
+
       // 4. Set up default monitoring
       await _setupDefaultMonitoring(project);
 
       await _auditService.logAction(
         actionType: 'project_infrastructure_initialized',
         description: 'Project infrastructure initialized successfully',
-        aiReasoning: 'System initialized git repository, security baseline, and monitoring for new project',
+        aiReasoning:
+            'System initialized git repository, security baseline, and monitoring for new project',
         contextData: {
           'project_id': project.id,
-          'components_initialized': ['git', 'security', 'snapshot', 'monitoring'],
+          'components_initialized': [
+            'git',
+            'security',
+            'snapshot',
+            'monitoring'
+          ],
         },
         userId: project.adminId,
       );
-
     } catch (e) {
       await _auditService.logAction(
         actionType: 'project_infrastructure_error',
-        description: 'Error initializing project infrastructure: ${e.toString()}',
+        description:
+            'Error initializing project infrastructure: ${e.toString()}',
         contextData: {
           'project_id': project.id,
           'error': e.toString(),
         },
         userId: project.adminId,
       );
-      
+
       // Don't throw - project creation should still succeed
       print('Warning: Failed to initialize some project infrastructure: $e');
     }
@@ -197,7 +207,7 @@ class ProjectService {
     try {
       // Create local git repository
       final repoPath = 'projects/${project.id}';
-      
+
       // Initialize repository with README
       final readmeContent = '''# ${project.name}
 
@@ -237,8 +247,8 @@ For security concerns, contact the project administrator.
 ''';
 
       await _gitIntegration.initializeRepository(
-        path: repoPath,
-        initialFiles: {
+        repoPath,
+        {
           'README.md': readmeContent,
           '.gitignore': _getDefaultGitignore(),
         },
@@ -253,7 +263,6 @@ For security concerns, contact the project administrator.
         },
         userId: project.adminId,
       );
-
     } catch (e) {
       throw Exception('Failed to initialize git repository: $e');
     }
@@ -264,10 +273,10 @@ For security concerns, contact the project administrator.
     try {
       // Deploy honeytokens for the project
       await _securityMonitor.deployProjectHoneytokens(project.id);
-      
+
       // Set up configuration monitoring
       await _securityMonitor.setupConfigurationMonitoring(project.id);
-      
+
       // Initialize audit logging for project
       await _auditService.initializeProjectAuditing(project.id);
 
@@ -276,11 +285,14 @@ For security concerns, contact the project administrator.
         description: 'Security baseline established for project',
         contextData: {
           'project_id': project.id,
-          'security_features': ['honeytokens', 'config_monitoring', 'audit_logging'],
+          'security_features': [
+            'honeytokens',
+            'config_monitoring',
+            'audit_logging'
+          ],
         },
         userId: project.adminId,
       );
-
     } catch (e) {
       throw Exception('Failed to initialize security baseline: $e');
     }
@@ -290,13 +302,19 @@ For security concerns, contact the project administrator.
   Future<void> _createInitialSnapshot(Project project) async {
     try {
       await _snapshotService.createSnapshot(
-        environment: 'initial',
-        description: 'Initial project state after creation',
-        metadata: {
-          'project_id': project.id,
-          'project_name': project.name,
-          'creation_type': 'bootstrap',
-        },
+        Snapshot(
+          id: '',
+          environment: 'initial',
+          gitCommit: 'initial',
+          databaseBackup: '',
+          configFiles: [
+            'project_id: ${project.id}',
+            'project_name: ${project.name}',
+            'creation_type: bootstrap',
+          ],
+          createdAt: DateTime.now(),
+          verified: false,
+        ),
       );
 
       await _auditService.logAction(
@@ -307,7 +325,6 @@ For security concerns, contact the project administrator.
         },
         userId: project.adminId,
       );
-
     } catch (e) {
       throw Exception('Failed to create initial snapshot: $e');
     }
@@ -318,11 +335,11 @@ For security concerns, contact the project administrator.
     try {
       // Configure system health monitoring
       await _securityMonitor.enableProjectMonitoring(project.id);
-      
+
       // Set up default alert thresholds
       await _securityMonitor.configureAlertThresholds(
-        projectId: project.id,
-        thresholds: {
+        project.id,
+        {
           'database_access': 'medium',
           'system_anomaly': 'medium',
           'network_anomaly': 'high',
@@ -339,7 +356,6 @@ For security concerns, contact the project administrator.
         },
         userId: project.adminId,
       );
-
     } catch (e) {
       throw Exception('Failed to set up default monitoring: $e');
     }

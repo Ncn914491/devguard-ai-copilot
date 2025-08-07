@@ -4,8 +4,8 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 import 'package:jwt_decode/jwt_decode.dart';
+import 'package:http/http.dart' as http;
 import '../database/services/services.dart';
-import '../database/models/models.dart';
 import '../services/email_service.dart';
 
 /// Authentication service with role-based access control (RBAC)
@@ -464,16 +464,70 @@ class AuthService {
     return digest.toString();
   }
 
-  /// Verify GitHub token (mock implementation)
+  /// Verify GitHub token and get user info
   Future<Map<String, dynamic>?> _verifyGitHubToken(String token) async {
-    // In a real implementation, this would call GitHub API
-    // For demo purposes, return mock data
-    return {
-      'login': 'demo_user',
-      'email': 'demo@github.com',
-      'name': 'Demo User',
-      'avatar_url': 'https://github.com/images/error/octocat_happy.gif',
-    };
+    try {
+      // Check if we're in demo mode
+      final isDemoMode = const String.fromEnvironment('ENABLE_DEMO_MODE',
+              defaultValue: 'true') ==
+          'true';
+
+      if (isDemoMode) {
+        // Return mock data for demo
+        return {
+          'login': 'demo_user',
+          'email': 'demo@github.com',
+          'name': 'Demo User',
+          'avatar_url': 'https://github.com/images/error/octocat_happy.gif',
+        };
+      }
+
+      // In production, make actual GitHub API call
+      final response = await http.get(
+        Uri.parse('https://api.github.com/user'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final userData = jsonDecode(response.body);
+
+        // Get user email if not public
+        if (userData['email'] == null) {
+          final emailResponse = await http.get(
+            Uri.parse('https://api.github.com/user/emails'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/vnd.github.v3+json',
+            },
+          );
+
+          if (emailResponse.statusCode == 200) {
+            final emails = jsonDecode(emailResponse.body) as List;
+            final primaryEmail = emails.firstWhere(
+              (email) => email['primary'] == true,
+              orElse: () => emails.isNotEmpty ? emails.first : null,
+            );
+            if (primaryEmail != null) {
+              userData['email'] = primaryEmail['email'];
+            }
+          }
+        }
+
+        return userData;
+      }
+
+      return null;
+    } catch (e) {
+      await _auditService.logAction(
+        actionType: 'github_token_verification_error',
+        description: 'Error verifying GitHub token: ${e.toString()}',
+        contextData: {'error': e.toString()},
+      );
+      return null;
+    }
   }
 
   /// Find user by email (public method for onboarding service)
@@ -610,7 +664,11 @@ class AuthService {
       _resetTokenExpiry[resetToken] = expiryTime;
 
       // Send reset email
-      await _emailService.sendPasswordResetEmail(email, resetToken);
+      await _emailService.sendPasswordResetEmail(
+        recipientEmail: email,
+        recipientName: email, // Use email as name for now
+        newPassword: resetToken, // Using reset token as temporary password
+      );
 
       await _auditService.logAction(
         actionType: 'password_reset_requested',

@@ -1,13 +1,14 @@
 {
-    "name": "devguard_ai_copilot",
-    "short_name": "devguard_ai_copilot",
+    "name": "DevGuard AI Copilot",
+    "short_name": "DevGuard",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#1976D2",
+    "theme_color": "#2196F3",
+    "description": "Cross-platform productivity and security copilot application for developers",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": ["productivity", "developer", "security"],
     "icons": [
         {
             "src": "icons/Icon-192.png",

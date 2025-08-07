@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/auth/auth_service.dart';
+import 'realtime_notification_widget.dart';
+import 'realtime_status_indicator.dart';
 
 class TopBar extends StatelessWidget {
   final VoidCallback onMenuPressed;
@@ -13,6 +16,8 @@ class TopBar extends StatelessWidget {
     required this.onCopilotPressed,
     required this.isCopilotExpanded,
   });
+
+  final _authService = AuthService.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +42,9 @@ class TopBar extends StatelessWidget {
               icon: const Icon(Icons.menu),
               tooltip: 'Toggle Navigation',
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // App Title and Status
             Expanded(
               child: Row(
@@ -63,25 +68,25 @@ class TopBar extends StatelessWidget {
                       size: 20,
                     ),
                   ),
-                  
+
                   const SizedBox(width: 12),
-                  
+
                   // Title
                   Text(
                     'DevGuard AI Copilot',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
-                  
+
                   const SizedBox(width: 16),
-                  
-                  // Status Indicator
-                  _buildStatusIndicator(context),
+
+                  // Real-time Status Indicator
+                  const RealtimeStatusIndicator(),
                 ],
               ),
             ),
-            
+
             // Search Bar
             Container(
               width: 300,
@@ -94,12 +99,18 @@ class TopBar extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Search specifications, tasks, alerts...',
                   hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
                   prefixIcon: Icon(
                     Icons.search,
                     size: 20,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
@@ -110,70 +121,56 @@ class TopBar extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // Action Buttons
             Row(
               children: [
-                // Notifications
-                IconButton(
-                  onPressed: () => _showNotifications(context),
-                  icon: Stack(
-                    children: [
-                      const Icon(Icons.notifications_outlined),
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.error,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  tooltip: 'Notifications',
+                // Real-time Notifications
+                RealtimeNotificationWidget(
+                  userId: _authService.currentUser?.id ?? '',
+                  userRole: _authService.currentUser?.role ?? 'viewer',
                 ),
-                
+
                 const SizedBox(width: 8),
-                
+
                 // Theme Toggle
                 Consumer<ThemeProvider>(
                   builder: (context, themeProvider, child) {
                     return IconButton(
                       onPressed: themeProvider.toggleTheme,
                       icon: Icon(
-                        themeProvider.isDarkMode 
-                            ? Icons.light_mode_outlined 
+                        themeProvider.isDarkMode
+                            ? Icons.light_mode_outlined
                             : Icons.dark_mode_outlined,
                       ),
-                      tooltip: themeProvider.isDarkMode 
-                          ? 'Switch to Light Mode' 
+                      tooltip: themeProvider.isDarkMode
+                          ? 'Switch to Light Mode'
                           : 'Switch to Dark Mode',
                     );
                   },
                 ),
-                
+
                 const SizedBox(width: 8),
-                
+
                 // Settings
                 IconButton(
                   onPressed: () => _showSettings(context),
                   icon: const Icon(Icons.settings_outlined),
                   tooltip: 'Settings',
                 ),
-                
+
                 const SizedBox(width: 16),
-                
+
                 // Copilot Toggle
                 Container(
                   decoration: BoxDecoration(
-                    color: isCopilotExpanded 
-                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                    color: isCopilotExpanded
+                        ? Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1)
                         : null,
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -181,12 +178,12 @@ class TopBar extends StatelessWidget {
                     onPressed: onCopilotPressed,
                     icon: Icon(
                       Icons.smart_toy_outlined,
-                      color: isCopilotExpanded 
+                      color: isCopilotExpanded
                           ? Theme.of(context).colorScheme.primary
                           : null,
                     ),
-                    tooltip: isCopilotExpanded 
-                        ? 'Collapse AI Copilot' 
+                    tooltip: isCopilotExpanded
+                        ? 'Collapse AI Copilot'
                         : 'Expand AI Copilot',
                   ),
                 ),
@@ -223,9 +220,9 @@ class TopBar extends StatelessWidget {
           Text(
             'Online',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.green,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: Colors.green,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
         ],
       ),

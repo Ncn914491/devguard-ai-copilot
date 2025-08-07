@@ -199,7 +199,7 @@ class PerformanceIntegrationService {
     if (uncachedOperations.isNotEmpty) {
       if (useBatching) {
         // Execute in batches for better performance
-        final futures = uncachedOperations.values.toList();
+        final futures = uncachedOperations.values.map((fn) => fn()).toList();
         final batchResults = await Future.wait(futures);
 
         int batchIndex = 0;
